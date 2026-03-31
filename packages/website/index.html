@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>autopilot — automatic profile routing for Chromium browsers</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="page">
+      <nav>
+        <a href="/" class="nav-logo">autopilot</a>
+        <div class="nav-links">
+          <a href="#install">Install</a>
+          <a href="#how-it-works">How it works</a>
+          <a href="https://github.com" class="nav-link-external">GitHub</a>
+        </div>
+      </nav>
+
+      <header class="hero">
+        <div class="hero-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="#6366f1">
+            <path d="M21.107 2.893a3.047 3.047 0 0 1 .012 4.302l-2.479 2.564l2.309 6.925a1 1 0 0 1 -.235 1.016l-2.5 2.55a1 1 0 0 1 -1.596 -.229l-2.864 -5.36l-1.754 1.753v2.586a1 1 0 0 1 -.293 .707l-2 2a1 1 0 0 1 -1.656 -.39l-1.341 -4.027l-4.025 -1.342a1 1 0 0 1 -.391 -1.656l2 -2a1 1 0 0 1 .706 -.292h2.586l1.757 -1.757l-5.317 -2.863a1 1 0 0 1 -.233 -1.587l2.5 -2.5a1 1 0 0 1 1.023 -.242l6.925 2.309l2.552 -2.467a3.05 3.05 0 0 1 4.314 0" />
+          </svg>
+        </div>
+        <h1>autopilot</h1>
+        <p class="hero-tagline">URLs open in the right browser profile, automatically.</p>
+        <p class="hero-sub">Route GitHub to your work profile, AWS to your dev account. Set rules once and forget about it.</p>
+        <div class="hero-actions">
+          <a href="#" class="btn btn-primary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+            Chrome Web Store
+          </a>
+          <a href="https://github.com" class="btn btn-secondary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.604-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0 1 12 6.836a9.59 9.59 0 0 1 2.504.337c1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.161 22 16.416 22 12c0-5.523-4.477-10-10-10z"/></svg>
+            View on GitHub
+          </a>
+        </div>
+      </header>
+
+      <section id="how-it-works" class="section">
+        <h2>How it works</h2>
+        <div class="steps">
+          <div class="step">
+            <span class="step-num">1</span>
+            <div>
+              <h3>Install the extension</h3>
+              <p>Add autopilot to each browser profile from the Chrome Web Store.</p>
+            </div>
+          </div>
+          <div class="step">
+            <span class="step-num">2</span>
+            <div>
+              <h3>Install the helper</h3>
+              <p>Run one command in Terminal to set up the native bridge.</p>
+            </div>
+          </div>
+          <div class="step">
+            <span class="step-num">3</span>
+            <div>
+              <h3>Set your rules</h3>
+              <p>Match by domain or keyword. URLs automatically open in the right profile.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="install" class="section">
+        <h2>Install the helper</h2>
+        <p class="section-sub">After installing the extension, run this in Terminal:</p>
+        <div class="install-block">
+          <code id="install-command">curl -sL https://YOURDOMAIN.dev/install | bash</code>
+          <button id="copy-btn" title="Copy">
+            <svg id="copy-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          </button>
+        </div>
+        <p class="install-note">Works on macOS. No admin required.</p>
+      </section>
+
+      <section class="section features">
+        <h2>Features</h2>
+        <div class="feature-grid">
+          <div class="feature">
+            <h3>Domain rules</h3>
+            <p>Route entire domains like <code>github.com</code> to a specific profile, with optional subdomain matching.</p>
+          </div>
+          <div class="feature">
+            <h3>Keyword matching</h3>
+            <p>Match URLs containing <code>aws</code>, <code>teams</code>, or any keyword — great for long auth redirect URLs.</p>
+          </div>
+          <div class="feature">
+            <h3>Shared config</h3>
+            <p>Rules are shared across profiles. Configure once, works everywhere.</p>
+          </div>
+          <div class="feature">
+            <h3>Chromium compatible</h3>
+            <p>Built for Helium, with support for Chrome, Brave, and other Chromium browsers coming soon.</p>
+          </div>
+        </div>
+      </section>
+
+      <footer>
+        <span class="footer-logo">Made with ♡ in OC, CA</span>
+        <div class="footer-links">
+          <a href="https://github.com">GitHub</a>
+          <a href="privacy.html">Privacy Policy</a>
+          <a href="https://ko-fi.com/dantemoony">Support</a>
+        </div>
+      </footer>
+    </div>
+
+    <script>
+      document.getElementById("copy-btn").addEventListener("click", async function() {
+        const cmd = document.getElementById("install-command").textContent;
+        await navigator.clipboard.writeText(cmd);
+        const icon = document.getElementById("copy-icon");
+        icon.style.display = "none";
+        this.textContent = "\u2713";
+        setTimeout(() => {
+          this.textContent = "";
+          icon.style.display = "";
+          this.appendChild(icon);
+        }, 1500);
+      });
+    </script>
+  </body>
+</html>

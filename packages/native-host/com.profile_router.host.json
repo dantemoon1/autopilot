@@ -1,0 +1,9 @@
+{
+  "name": "com.profile_router.host",
+  "description": "Profile Router - Opens URLs in specific Helium browser profiles",
+  "path": "PLACEHOLDER_HOST_PATH",
+  "type": "stdio",
+  "allowed_origins": [
+    "chrome-extension://eifgnohgbaefkgpgiipagieecnfjkome/"
+  ]
+}
