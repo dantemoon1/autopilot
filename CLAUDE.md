@@ -56,6 +56,11 @@ POST /webhooks/stripe      — Stripe webhook (signature-verified)
 WebSocket /                — relay for real-time URL routing
 ```
 
+## Git workflow
+
+- Push directly to `main` — this is a public extension repo, no PR required
+- The companion server repo uses PRs for code review before merging
+
 ## Testing
 
 - Local dev: set `config.js` to `localhost:8080`, run server with `npm run dev`
