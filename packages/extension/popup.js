@@ -48,6 +48,18 @@ function profileLabel(browserId, profileName) {
   return `${BROWSER_NAMES[browserId] || browserId} \u2013 ${profileName}`;
 }
 
+function detectBrowser() {
+  const brands = navigator.userAgentData?.brands || [];
+  for (const { brand } of brands) {
+    if (brand === "Brave") return "brave";
+    if (brand === "Microsoft Edge") return "edge";
+  }
+  const ua = navigator.userAgent;
+  if (ua.includes("Arc")) return "arc";
+  if (ua.includes("Helium")) return "helium";
+  return "chrome";
+}
+
 // Custom profile select component
 class ProfileSelect {
   constructor(container, variant = "form") {
@@ -96,11 +108,10 @@ class ProfileSelect {
     this.dropdown.addEventListener("click", (e) => e.stopPropagation());
   }
 
-  populate(profiles, selectedValue) {
+  populateFree(profiles, selectedValue) {
     this._profiles = profiles;
     this.dropdown.replaceChildren();
 
-    // Group by browser, in display order
     const grouped = new Map();
     for (const id of BROWSER_ORDER) {
       const items = profiles.filter((p) => p.browser === id);
@@ -120,32 +131,57 @@ class ProfileSelect {
         opt.className = "profile-select-option";
         if (val === selectedValue) opt.classList.add("selected");
         opt.dataset.value = val;
-
         opt.append(browserIcon(p.browser), document.createTextNode(p.name));
-
         opt.addEventListener("click", () => {
-          this._select(val, p);
+          this._select(val, { browser: p.browser, name: p.name });
           this.container.classList.remove("open");
         });
-
         this.dropdown.appendChild(opt);
       }
     }
 
     if (selectedValue) {
       const match = profiles.find((p) => profileKey(p.browser, p.directory) === selectedValue);
-      if (match) this._select(selectedValue, match, true);
+      if (match) this._select(selectedValue, { browser: match.browser, name: match.name }, true);
+    }
+  }
+
+  populatePaid(profiles, selectedValue) {
+    this._profiles = profiles;
+    this.dropdown.replaceChildren();
+
+    for (const p of profiles) {
+      const opt = document.createElement("button");
+      opt.type = "button";
+      opt.className = "profile-select-option";
+      if (p.id === selectedValue) opt.classList.add("selected");
+      opt.dataset.value = p.id;
+      if (p.browser) opt.append(browserIcon(p.browser));
+      opt.appendChild(document.createTextNode(p.name));
+      opt.addEventListener("click", () => {
+        this._select(p.id, { browser: p.browser, name: p.name });
+        this.container.classList.remove("open");
+      });
+      this.dropdown.appendChild(opt);
+    }
+
+    if (selectedValue) {
+      const match = profiles.find((p) => p.id === selectedValue);
+      if (match) this._select(selectedValue, { browser: match.browser, name: match.name }, true);
     }
   }
 
   _select(value, profile, silent) {
     this.value = value;
 
-    const newIcon = browserIcon(profile.browser);
+    const newIcon = profile.browser ? browserIcon(profile.browser) : document.createElement("span");
+    newIcon.classList.add("browser-icon");
     this._triggerIcon.replaceWith(newIcon);
     this._triggerIcon = newIcon;
 
-    this._triggerText.textContent = profileLabel(profile.browser, profile.name);
+    this._triggerText.textContent = profile.browser
+      ? profileLabel(profile.browser, profile.name)
+      : profile.name;
 
     for (const opt of this.dropdown.querySelectorAll(".profile-select-option")) {
       opt.classList.toggle("selected", opt.dataset.value === value);
@@ -155,24 +191,27 @@ class ProfileSelect {
   }
 }
 
-// DOM references
+// ── DOM refs ──
+
+const setupScreen = document.getElementById("setup-screen");
+const subscribeScreen = document.getElementById("subscribe-screen");
+const registerScreen = document.getElementById("register-screen");
+const mainUI = document.getElementById("main-ui");
 const profileBar = document.getElementById("profile-bar");
 const rulesList = document.getElementById("rules-list");
 const addRuleBtn = document.getElementById("add-rule-btn");
 const statusMessage = document.getElementById("status-message");
-const nativeHostWarning = document.getElementById("native-host-warning");
-
 const newTypeSelect = document.getElementById("new-type");
 const domainFields = document.getElementById("domain-fields");
 const keywordFields = document.getElementById("keyword-fields");
 const newDomainInput = document.getElementById("new-domain");
 const newSubdomainsCheckbox = document.getElementById("new-subdomains");
 const newKeywordInput = document.getElementById("new-keyword");
-
 const showFormBtn = document.getElementById("show-form-btn");
 const addRuleForm = document.getElementById("add-rule-form");
 
 let profiles = [];
+let currentMode = "free";
 
 // Custom dropdowns
 const currentProfileSelect = new ProfileSelect(
@@ -184,25 +223,62 @@ const newProfileSelect = new ProfileSelect(
   "form"
 );
 
-// Copy install command
+// ── Events ──
+
 document.getElementById("copy-cmd-btn").addEventListener("click", async () => {
   const cmd = document.getElementById("install-command").textContent;
   await navigator.clipboard.writeText(cmd);
   const btn = document.getElementById("copy-cmd-btn");
   const originalNodes = Array.from(btn.childNodes).map((n) => n.cloneNode(true));
   btn.textContent = "\u2713";
-  setTimeout(() => {
-    btn.replaceChildren(...originalNodes);
-  }, 1500);
+  setTimeout(() => { btn.replaceChildren(...originalNodes); }, 1500);
 });
 
-// Toggle form visibility
+document.getElementById("sign-in-btn").addEventListener("click", async () => {
+  const btn = document.getElementById("sign-in-btn");
+  btn.disabled = true;
+  btn.textContent = "Signing in...";
+  try {
+    await chrome.runtime.sendMessage({ action: "sign_in" });
+    init();
+  } catch (err) {
+    showStatus("Sign in failed");
+    btn.disabled = false;
+    btn.textContent = "Sign in with Google";
+  }
+});
+
+document.getElementById("subscribe-monthly-btn").addEventListener("click", () => {
+  chrome.runtime.sendMessage({ action: "checkout", plan: "monthly" });
+});
+
+document.getElementById("subscribe-annual-btn").addEventListener("click", () => {
+  chrome.runtime.sendMessage({ action: "checkout", plan: "annual" });
+});
+
+document.getElementById("register-btn").addEventListener("click", async () => {
+  const name = document.getElementById("profile-name-input").value.trim();
+  if (!name) { showStatus("Enter a name"); return; }
+
+  const response = await chrome.runtime.sendMessage({
+    action: "register_profile",
+    name,
+    browser: detectBrowser(),
+  });
+
+  if (response.error) {
+    showStatus(response.error);
+    return;
+  }
+
+  init();
+});
+
 showFormBtn.addEventListener("click", () => {
   showFormBtn.hidden = true;
   addRuleForm.hidden = false;
 });
 
-// Toggle form fields based on rule type
 newTypeSelect.addEventListener("change", () => {
   const isKeyword = newTypeSelect.value === "keyword";
   domainFields.hidden = isKeyword;
@@ -213,6 +289,8 @@ function showStatus(msg) {
   statusMessage.textContent = msg;
   setTimeout(() => { statusMessage.textContent = ""; }, 2000);
 }
+
+// ── Rules ──
 
 async function loadRules() {
   const response = await chrome.runtime.sendMessage({ action: "get_rules" });
@@ -227,7 +305,9 @@ function describeRule(rule) {
   if (rule.type === "keyword") {
     return { type: "contains", value: rule.keyword };
   }
-  const value = rule.includeSubdomains ? "*." + rule.domain : rule.domain;
+  const d = rule.domain || "";
+  const sub = rule.includeSubdomains ?? rule.include_subdomains;
+  const value = sub ? "*." + d : d;
   return { type: "domain", value };
 }
 
@@ -247,12 +327,19 @@ function renderRules(rules) {
     card.className = "rule-card";
 
     const { type, value } = describeRule(rule);
-    const profile = profiles.find(
-      (p) => p.browser === rule.browser && p.directory === rule.profileDirectory
-    );
-    const displayName = profile
-      ? profileLabel(rule.browser, profile.name)
-      : rule.profileDirectory;
+
+    let displayName;
+    if (currentMode === "paid") {
+      const profile = profiles.find((p) => p.id === rule.target_profile_id);
+      displayName = profile ? profile.name : "Unknown";
+    } else {
+      const profile = profiles.find(
+        (p) => p.browser === rule.browser && p.directory === rule.profileDirectory
+      );
+      displayName = profile
+        ? profileLabel(rule.browser, profile.name)
+        : rule.profileDirectory;
+    }
 
     const matchDiv = document.createElement("div");
     matchDiv.className = "rule-match";
@@ -269,17 +356,23 @@ function renderRules(rules) {
 
     const profileSpan = document.createElement("span");
     profileSpan.className = "rule-profile";
-    if (rule.browser) profileSpan.appendChild(browserIcon(rule.browser));
+    if (currentMode === "free" && rule.browser) {
+      profileSpan.appendChild(browserIcon(rule.browser));
+    }
     profileSpan.appendChild(document.createTextNode(displayName));
 
     const deleteBtn = document.createElement("button");
     deleteBtn.className = "rule-delete";
     deleteBtn.textContent = "\u00d7";
     deleteBtn.addEventListener("click", async () => {
-      const currentRules = await loadRules();
-      currentRules.splice(index, 1);
-      await saveRules(currentRules);
-      renderRules(currentRules);
+      if (currentMode === "paid") {
+        await chrome.runtime.sendMessage({ action: "delete_rule_paid", ruleId: rule.id });
+      } else {
+        const currentRules = await loadRules();
+        currentRules.splice(index, 1);
+        await saveRules(currentRules);
+      }
+      renderRules(await loadRules());
       showStatus("Rule removed");
     });
 
@@ -288,103 +381,145 @@ function renderRules(rules) {
   });
 }
 
-currentProfileSelect.onChange = async (value) => {
-  await chrome.storage.local.set({ currentProfile: value });
-  showStatus("Profile saved");
-};
-
-async function init() {
-  const hostCheck = await chrome.runtime.sendMessage({
-    action: "check_native_host",
-  });
-
-  if (!hostCheck.installed) {
-    nativeHostWarning.hidden = false;
-    profileBar.hidden = true;
-    rulesList.hidden = true;
-    showFormBtn.hidden = true;
-    return;
-  }
-
-  const response = await chrome.runtime.sendMessage({
-    action: "list_profiles",
-  });
-
-  if (response.error) {
-    nativeHostWarning.hidden = false;
-    profileBar.hidden = true;
-    rulesList.hidden = true;
-    showFormBtn.hidden = true;
-    return;
-  }
-
-  profiles = response.profiles.filter((p) => p.hasExtension);
-  const callingBrowser = response.callingBrowser;
-
-  const config = await chrome.storage.local.get("currentProfile");
-  let currentProfile = config.currentProfile || "";
-
-  // Auto-detect current profile if not already set
-  if (!currentProfile && callingBrowser) {
-    const candidates = profiles.filter((p) => p.browser === callingBrowser);
-    if (candidates.length === 1) {
-      currentProfile = profileKey(candidates[0].browser, candidates[0].directory);
-      await chrome.storage.local.set({ currentProfile });
-    }
-  }
-
-  const rules = await loadRules();
-
-  currentProfileSelect.populate(profiles, currentProfile);
-  newProfileSelect.populate(profiles);
-  renderRules(rules);
-}
+// ── Add rule ──
 
 addRuleBtn.addEventListener("click", async () => {
   const type = newTypeSelect.value;
   const profileValue = newProfileSelect.value;
 
-  if (!profileValue) {
-    showStatus("Select a profile");
-    return;
-  }
+  if (!profileValue) { showStatus("Select a profile"); return; }
 
-  const { browser, directory: profileDirectory } = parseProfileKey(profileValue);
-
-  let rule;
-
-  if (type === "domain") {
-    let domain = newDomainInput.value.trim();
-    if (!domain) {
-      showStatus("Enter a domain");
-      return;
+  if (currentMode === "paid") {
+    let rule;
+    if (type === "domain") {
+      let domain = newDomainInput.value.trim();
+      if (!domain) { showStatus("Enter a domain"); return; }
+      domain = domain.replace(/^https?:\/\//, "").replace(/\/.*$/, "").toLowerCase();
+      rule = { type: "domain", domain, includeSubdomains: newSubdomainsCheckbox.checked, targetProfileId: profileValue };
+    } else {
+      const keyword = newKeywordInput.value.trim();
+      if (!keyword) { showStatus("Enter a keyword"); return; }
+      rule = { type: "keyword", keyword: keyword.toLowerCase(), targetProfileId: profileValue };
     }
-    domain = domain
-      .replace(/^https?:\/\//, "")
-      .replace(/\/.*$/, "")
-      .toLowerCase();
-
-    const includeSubdomains = newSubdomainsCheckbox.checked;
-    rule = { type: "domain", domain, includeSubdomains, browser, profileDirectory };
+    await chrome.runtime.sendMessage({ action: "add_rule_paid", rule });
   } else {
-    const keyword = newKeywordInput.value.trim();
-    if (!keyword) {
-      showStatus("Enter a keyword");
-      return;
+    const { browser, directory: profileDirectory } = parseProfileKey(profileValue);
+    let rule;
+    if (type === "domain") {
+      let domain = newDomainInput.value.trim();
+      if (!domain) { showStatus("Enter a domain"); return; }
+      domain = domain.replace(/^https?:\/\//, "").replace(/\/.*$/, "").toLowerCase();
+      rule = { type: "domain", domain, includeSubdomains: newSubdomainsCheckbox.checked, browser, profileDirectory };
+    } else {
+      const keyword = newKeywordInput.value.trim();
+      if (!keyword) { showStatus("Enter a keyword"); return; }
+      rule = { type: "keyword", keyword: keyword.toLowerCase(), browser, profileDirectory };
     }
-    rule = { type: "keyword", keyword: keyword.toLowerCase(), browser, profileDirectory };
+    const rules = await loadRules();
+    rules.push(rule);
+    await saveRules(rules);
   }
 
-  const rules = await loadRules();
-  rules.push(rule);
-  await saveRules(rules);
-
-  renderRules(rules);
+  renderRules(await loadRules());
   newDomainInput.value = "";
   newKeywordInput.value = "";
   addRuleForm.hidden = true;
   showFormBtn.hidden = false;
   showStatus("Rule added");
 });
+
+// ── Profile change (free mode) ──
+
+currentProfileSelect.onChange = async (value) => {
+  await chrome.storage.local.set({ currentProfile: value });
+  showStatus("Profile saved");
+};
+
+// ── Init ──
+
+async function init() {
+  // Hide all screens
+  setupScreen.hidden = true;
+  subscribeScreen.hidden = true;
+  registerScreen.hidden = true;
+  mainUI.hidden = true;
+
+  const modeInfo = await chrome.runtime.sendMessage({ action: "get_mode" });
+  currentMode = modeInfo.mode;
+
+  if (currentMode === "paid") {
+    // Check subscription status
+    const subRes = await chrome.runtime.sendMessage({ action: "check_subscription" });
+    if (!subRes.active) {
+      subscribeScreen.hidden = false;
+      return;
+    }
+
+    // Check if profile is registered
+    if (!modeInfo.paidProfileId) {
+      registerScreen.hidden = false;
+      return;
+    }
+
+    // Load profiles and rules from server
+    const [profilesRes, rulesRes] = await Promise.all([
+      chrome.runtime.sendMessage({ action: "list_profiles" }),
+      loadRules(),
+    ]);
+
+    if (profilesRes.error) {
+      setupScreen.hidden = false;
+      return;
+    }
+
+    profiles = profilesRes.profiles || [];
+    mainUI.hidden = false;
+
+    // In paid mode, show profile name as static text instead of dropdown
+    const myProfile = profiles.find((p) => p.id === modeInfo.paidProfileId);
+    if (myProfile) {
+      currentProfileSelect._triggerText.textContent = myProfile.name;
+      currentProfileSelect.trigger.disabled = true;
+    }
+
+    newProfileSelect.populatePaid(profiles);
+    renderRules(rulesRes);
+  } else {
+    // Free mode: check native host
+    const hostCheck = await chrome.runtime.sendMessage({ action: "check_native_host" });
+
+    if (!hostCheck.installed) {
+      setupScreen.hidden = false;
+      return;
+    }
+
+    const response = await chrome.runtime.sendMessage({ action: "list_profiles" });
+    if (response.error) {
+      setupScreen.hidden = false;
+      return;
+    }
+
+    profiles = (response.profiles || []).filter((p) => p.hasExtension);
+    const callingBrowser = response.callingBrowser;
+
+    const config = await chrome.storage.local.get("currentProfile");
+    let currentProfile = config.currentProfile || "";
+
+    if (!currentProfile && callingBrowser) {
+      const candidates = profiles.filter((p) => p.browser === callingBrowser);
+      if (candidates.length === 1) {
+        currentProfile = profileKey(candidates[0].browser, candidates[0].directory);
+        await chrome.storage.local.set({ currentProfile });
+      }
+    }
+
+    const rules = await loadRules();
+
+    mainUI.hidden = false;
+    currentProfileSelect.populateFree(profiles, currentProfile);
+    newProfileSelect.populateFree(profiles);
+    renderRules(rules);
+  }
+}
 
 init();

@@ -8,58 +8,90 @@
     <div id="app">
       <h1 id="title">autopilot</h1>
 
-      <div id="native-host-warning" class="warning" hidden>
-        <p>Helper not installed. Run this in Terminal:</p>
+      <div id="setup-screen" hidden>
+        <p class="setup-text">Helper not installed. Run this in Terminal:</p>
         <div class="install-cmd">
           <code id="install-command">curl -fsSL https://dantemoon1.github.io/autopilot/install | bash</code>
           <button id="copy-cmd-btn" title="Copy"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
         </div>
+        <div class="setup-divider"><span>or</span></div>
+        <button id="sign-in-btn" class="btn-google">
+          <svg viewBox="0 0 24 24" width="16" height="16"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+          Sign in with Google
+        </button>
+        <p class="setup-sub">No setup required · $2/mo</p>
       </div>
 
-      <div id="profile-bar">
-        <span class="profile-label">This profile is</span>
-        <div id="current-profile-select"></div>
+      <div id="subscribe-screen" hidden>
+        <p class="subscribe-welcome">Welcome! Subscribe to get started.</p>
+        <p class="subscribe-pitch">No setup required. Links route automatically across all your browsers.</p>
+        <div class="subscribe-options">
+          <button id="subscribe-monthly-btn" class="btn-subscribe">
+            <span class="plan-price">$2/mo</span>
+          </button>
+          <button id="subscribe-annual-btn" class="btn-subscribe btn-subscribe--best">
+            <span class="plan-badge">save 25%</span>
+            <span class="plan-price">$18/yr</span>
+          </button>
+        </div>
       </div>
 
-      <div id="rules-list"></div>
-
-      <button id="show-form-btn">+ Add Rule</button>
-      <div id="add-rule-form" hidden>
-        <div class="form-row form-row-inline">
-          <label class="form-label">Rule:</label>
-          <select id="new-type">
-            <option value="domain">Domain</option>
-            <option value="keyword">URL contains</option>
-          </select>
-        </div>
-
-        <div id="domain-fields" class="form-row form-row-inline">
-          <input
-            type="text"
-            id="new-domain"
-            placeholder="github.com"
-          />
-          <label class="checkbox-label">
-            <input type="checkbox" id="new-subdomains" checked />
-            Subdomains
-          </label>
-        </div>
-
-        <div id="keyword-fields" class="form-row" hidden>
-          <input
-            type="text"
-            id="new-keyword"
-            placeholder="aws, teams, etc."
-          />
-        </div>
-
-        <div class="form-row form-row-inline">
-          <label class="form-label">Open in:</label>
-          <div id="new-profile-select"></div>
-        </div>
-
+      <div id="register-screen" hidden>
+        <p class="setup-text">Name this browser profile:</p>
         <div class="form-row">
-          <button id="add-rule-btn">Add Rule</button>
+          <input type="text" id="profile-name-input" placeholder="Work Chrome, Personal, etc." />
+        </div>
+        <div class="form-row">
+          <button id="register-btn" class="btn-primary">Create Profile</button>
+        </div>
+      </div>
+
+      <div id="main-ui" hidden>
+        <div id="profile-bar">
+          <span class="profile-label">This profile is</span>
+          <div id="current-profile-select"></div>
+        </div>
+
+        <div id="rules-list"></div>
+
+        <button id="show-form-btn">+ Add Rule</button>
+        <div id="add-rule-form" hidden>
+          <div class="form-row form-row-inline">
+            <label class="form-label">Rule:</label>
+            <select id="new-type">
+              <option value="domain">Domain</option>
+              <option value="keyword">URL contains</option>
+            </select>
+          </div>
+
+          <div id="domain-fields" class="form-row form-row-inline">
+            <input
+              type="text"
+              id="new-domain"
+              placeholder="github.com"
+            />
+            <label class="checkbox-label">
+              <input type="checkbox" id="new-subdomains" checked />
+              Subdomains
+            </label>
+          </div>
+
+          <div id="keyword-fields" class="form-row" hidden>
+            <input
+              type="text"
+              id="new-keyword"
+              placeholder="aws, teams, etc."
+            />
+          </div>
+
+          <div class="form-row form-row-inline">
+            <label class="form-label">Open in:</label>
+            <div id="new-profile-select"></div>
+          </div>
+
+          <div class="form-row">
+            <button id="add-rule-btn">Add Rule</button>
+          </div>
         </div>
       </div>
 
