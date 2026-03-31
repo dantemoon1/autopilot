@@ -21,7 +21,7 @@ uninstall.sh     Uninstaller
 
 ## Two modes
 
-- **Cloud mode**: user signs in with Google, rules stored on server, routing via WebSocket relay. Free tier gets 1 rule, premium gets unlimited.
+- **Cloud mode**: user signs in with Google, rules stored on server, routing via WebSocket relay. Free tier gets 1 rule, premium gets up to 100.
 - **Local mode**: native host installed via terminal, rules stored in `~/.local/share/autopilot/config.json`, unlimited rules, no server.
 
 ## Key files
@@ -47,7 +47,7 @@ GET  /profiles             — list user's profiles
 POST /profiles             — create profile
 DELETE /profiles/:id       — delete profile
 GET  /rules                — list user's rules
-POST /rules                — create rule (1 free, unlimited premium)
+POST /rules                — create rule (1 free, up to 100 premium)
 DELETE /rules/:id          — delete rule
 GET  /subscription         — check subscription status
 POST /checkout             — create Stripe checkout session

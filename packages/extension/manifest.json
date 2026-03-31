@@ -19,7 +19,7 @@
     "default_title": "autopilot"
   },
   "externally_connectable": {
-    "matches": ["https://dantemoon1.github.io/*"]
+    "matches": ["https://autopilotapp.co/*"]
   },
   "icons": {
     "16": "icons/icon16.png",

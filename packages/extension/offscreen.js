@@ -20,7 +20,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   }
 
   if (msg.type === "disconnect") {
-    disconnect();
+    disconnect(true);
     sendResponse({ ok: true });
     return false;
   }
@@ -99,12 +99,14 @@ function connect() {
   };
 }
 
-function disconnect() {
+function disconnect(clearCredentials = false) {
   clearTimeout(reconnectTimer);
   reconnectTimer = null;
-  currentUrl = null;
-  currentToken = null;
-  currentProfileId = null;
+  if (clearCredentials) {
+    currentUrl = null;
+    currentToken = null;
+    currentProfileId = null;
+  }
   if (ws) {
     ws.onclose = null;
     ws.close();

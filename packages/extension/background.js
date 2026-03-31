@@ -2,7 +2,7 @@ importScripts("config.js");
 
 const NATIVE_HOST = "com.profile_router.host";
 const EXPECTED_HOST_VERSION = "1.0.0";
-const UNINSTALL_URL = "https://dantemoon1.github.io/autopilot/uninstall.html";
+const UNINSTALL_URL = "https://autopilotapp.co/uninstall.html";
 // API_URL and WS_URL are loaded from config.js (production: autopilot-relay.fly.dev)
 // For local development, edit config.js to point to localhost:8080
 const GOOGLE_CLIENT_ID =
@@ -65,20 +65,20 @@ async function serverFetch(path, options = {}) {
 
 // ── Google Sign-In (tab-based for cross-browser support) ──
 
-const AUTH_CALLBACK_URL = "https://dantemoon1.github.io/autopilot/auth-callback.html";
+const AUTH_CALLBACK_URL = "https://autopilotapp.co/auth-callback.html";
+
+let pendingNonce = null;
 
 async function signIn() {
-  const nonce = crypto.randomUUID();
+  pendingNonce = crypto.randomUUID();
   const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
   authUrl.searchParams.set("client_id", GOOGLE_CLIENT_ID);
   authUrl.searchParams.set("redirect_uri", AUTH_CALLBACK_URL);
   authUrl.searchParams.set("response_type", "id_token");
   authUrl.searchParams.set("scope", "openid email profile");
-  authUrl.searchParams.set("nonce", nonce);
+  authUrl.searchParams.set("nonce", pendingNonce);
   authUrl.searchParams.set("prompt", "select_account");
 
-  // Open Google sign-in in a new tab — the callback page sends the token back
-  // via chrome.runtime.sendMessage (externally_connectable)
   await chrome.tabs.create({ url: authUrl.toString() });
 }
 
@@ -86,6 +86,10 @@ async function signIn() {
 // Note: must NOT be async — return true synchronously to keep the channel open
 chrome.runtime.onMessageExternal.addListener(
   (message, sender, sendResponse) => {
+    const senderUrl = sender.url || "";
+    const allowedBase = "https://autopilotapp.co/";
+    if (!senderUrl.startsWith(allowedBase)) return;
+
     if (message.type === "oauth_callback" && message.idToken) {
       handleOAuthCallback(message, sender).then(sendResponse);
       return true;
@@ -99,11 +103,14 @@ chrome.runtime.onMessageExternal.addListener(
 
 async function handleOAuthCallback(message, sender) {
   try {
+    if (!pendingNonce) return { error: "No pending sign-in" };
+
     const res = await fetch(`${API_URL}/auth/google`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ idToken: message.idToken }),
+      body: JSON.stringify({ idToken: message.idToken, nonce: pendingNonce }),
     });
+    pendingNonce = null;
     if (!res.ok) throw new Error("Authentication failed");
 
     const data = await res.json();
@@ -139,6 +146,8 @@ async function signOut() {
     "user",
     "paidProfileId",
   ]);
+  await chrome.contextMenus.removeAll();
+  invalidateRulesCache();
 }
 
 // ── Offscreen / WebSocket relay (paid mode) ──
@@ -330,6 +339,9 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         chrome.windows.update(tab.windowId, { focused: true });
       });
     }
+    if (message.type === "ws-error") {
+      console.warn("autopilot: WebSocket error:", message.error);
+    }
     return false;
   }
 
@@ -492,6 +504,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         }
         const data = await res.json();
         if (res.ok) {
+          invalidateRulesCache();
           sendResponse({ success: true, rule: data });
         } else {
           sendResponse({ error: data.error });
@@ -505,11 +518,34 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
   if (message.action === "delete_rule_paid") {
     serverFetch(`/rules/${message.ruleId}`, { method: "DELETE" })
-      .then(() => sendResponse({ success: true }))
+      .then(() => { invalidateRulesCache(); sendResponse({ success: true }); })
       .catch((err) => sendResponse({ error: err.message }));
     return true;
   }
 });
+
+// ── Rules cache (paid mode) ──
+
+let cachedRules = null;
+let cacheTime = 0;
+const CACHE_TTL = 30_000; // 30 seconds
+
+async function getCachedRules() {
+  if (cachedRules && Date.now() - cacheTime < CACHE_TTL) return cachedRules;
+  try {
+    const data = await serverFetch("/rules");
+    cachedRules = data.rules || [];
+    cacheTime = Date.now();
+    return cachedRules;
+  } catch {
+    return cachedRules || [];
+  }
+}
+
+function invalidateRulesCache() {
+  cachedRules = null;
+  cacheTime = 0;
+}
 
 // ── Navigation interception ──
 
@@ -538,8 +574,7 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
     if (!paidProfileId) return;
     let rules;
     try {
-      const data = await serverFetch("/rules");
-      rules = data.rules || [];
+      rules = await getCachedRules();
     } catch {
       return;
     }

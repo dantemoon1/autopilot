@@ -214,7 +214,6 @@ class ProfileSelect {
 // ── DOM refs ──
 
 const setupScreen = document.getElementById("setup-screen");
-const subscribeScreen = document.getElementById("subscribe-screen");
 const registerScreen = document.getElementById("register-screen");
 const mainUI = document.getElementById("main-ui");
 const profileBar = document.getElementById("profile-bar");
@@ -316,7 +315,7 @@ document.getElementById("sign-out-link").addEventListener("click", async (e) => 
 
 document.getElementById("switch-mode-link").addEventListener("click", async (e) => {
   e.preventDefault();
-  await chrome.storage.local.remove(["mode", "currentProfile"]);
+  await chrome.storage.local.remove(["mode", "currentProfile", "authToken", "user", "paidProfileId"]);
   init();
 });
 
@@ -325,7 +324,14 @@ document.getElementById("register-btn").addEventListener("click", async () => {
   const name = document.getElementById("profile-name-input").value.trim();
   if (!name) { showStatus("Enter a name"); return; }
 
+  // Check if this name is already used by another profile
+  const existing = await chrome.runtime.sendMessage({ action: "list_profiles" });
   const browser = await detectBrowser();
+  if (existing.profiles?.some((p) => p.name === name && p.browser === browser)) {
+    showStatus("That name is already used. Try a unique name like 'Work Chrome' or 'Home Helium'.");
+    return;
+  }
+
   const response = await chrome.runtime.sendMessage({
     action: "register_profile",
     name,
@@ -433,7 +439,8 @@ function renderRules(rules) {
     deleteBtn.textContent = "\u00d7";
     deleteBtn.addEventListener("click", async () => {
       if (currentMode === "paid") {
-        await chrome.runtime.sendMessage({ action: "delete_rule_paid", ruleId: rule.id });
+        const result = await chrome.runtime.sendMessage({ action: "delete_rule_paid", ruleId: rule.id });
+        if (result?.error) { showStatus(result.error); return; }
       } else {
         const currentRules = await loadRules();
         currentRules.splice(index, 1);
@@ -472,6 +479,10 @@ addRuleBtn.addEventListener("click", async () => {
     if (result?.error === "upgrade_required") {
       mainUI.hidden = true;
       document.getElementById("upgrade-screen").hidden = false;
+      return;
+    }
+    if (result?.error) {
+      showStatus(result.error);
       return;
     }
   } else {
