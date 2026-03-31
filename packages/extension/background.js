@@ -117,14 +117,11 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
         // Mark as recently redirected
         recentRedirects.set(details.url, Date.now());
 
-        // Redirect the tab to about:blank to stop loading
-        await chrome.tabs.update(details.tabId, { url: "about:blank" });
-
-        // Open in the correct profile
-        await openInProfile(details.url, rule.profileDirectory);
-
-        // Close the tab
-        await chrome.tabs.remove(details.tabId);
+        // Open in the correct profile first — only close tab if it succeeds
+        const result = await openInProfile(details.url, rule.profileDirectory);
+        if (result.success) {
+          await chrome.tabs.remove(details.tabId);
+        }
       } catch (err) {
         console.error("autopilot: failed to redirect", err);
       }
