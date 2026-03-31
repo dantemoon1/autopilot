@@ -35,6 +35,10 @@ mkdir -p "$INSTALL_DIR"
 cp "$SCRIPT_DIR/packages/native-host/host.py" "$INSTALL_DIR/host.py"
 chmod +x "$INSTALL_DIR/host.py"
 
+# Copy uninstaller so users can remove the helper later without the repo
+cp "$SCRIPT_DIR/uninstall.sh" "$INSTALL_DIR/uninstall.sh"
+chmod +x "$INSTALL_DIR/uninstall.sh"
+
 # Create default config if it doesn't exist
 if [ ! -f "$INSTALL_DIR/config.json" ]; then
   echo '{"rules": []}' > "$INSTALL_DIR/config.json"
@@ -86,3 +90,5 @@ fi
 
 echo ""
 echo "Done!"
+echo "Uninstall later with:"
+echo "  bash $INSTALL_DIR/uninstall.sh"

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Uninstall — autopilot</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="page">
+      <nav>
+        <a href="./" class="nav-logo">autopilot</a>
+        <div class="nav-links">
+          <a href="./">Home</a>
+          <a href="privacy.html">Privacy</a>
+        </div>
+      </nav>
+
+      <section class="section" style="border-top: none; padding-top: 48px;">
+        <h2>Uninstall</h2>
+        <p class="section-sub">Removing the extension stops routing. If you also want to remove the local helper, run this in Terminal:</p>
+        <div class="install-block">
+          <code id="uninstall-command">bash ~/.local/share/autopilot/uninstall.sh</code>
+          <button id="copy-btn" title="Copy">
+            <svg id="copy-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          </button>
+        </div>
+        <p class="install-note">This keeps your saved rules by default. Use <code>bash ~/.local/share/autopilot/uninstall.sh --purge</code> to remove them too.</p>
+        <p class="install-note">If that file is missing, you can simply leave the helper installed or reinstall the extension and run setup again later.</p>
+      </section>
+
+      <footer>
+        <span class="footer-logo">autopilot</span>
+        <div class="footer-links">
+          <a href="https://github.com/dantemoon1/autopilot">GitHub</a>
+          <a href="privacy.html">Privacy Policy</a>
+        </div>
+      </footer>
+    </div>
+
+    <script>
+      document.getElementById("copy-btn").addEventListener("click", async function() {
+        const cmd = document.getElementById("uninstall-command").textContent;
+        await navigator.clipboard.writeText(cmd);
+        const icon = document.getElementById("copy-icon");
+        icon.style.display = "none";
+        this.textContent = "\u2713";
+        setTimeout(() => {
+          this.textContent = "";
+          icon.style.display = "";
+          this.appendChild(icon);
+        }, 1500);
+      });
+    </script>
+  </body>
+</html>

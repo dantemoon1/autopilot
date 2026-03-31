@@ -4,7 +4,7 @@ set -euo pipefail
 INSTALL_DIR="$HOME/.local/share/autopilot"
 HOST_NAME="com.profile_router.host"
 EXTENSION_ID="eifgnohgbaefkgpgiipagieecnfjkome"
-RAW_BASE="https://raw.githubusercontent.com/YOURUSER/autopilot/main"
+RAW_BASE="https://raw.githubusercontent.com/dantemoon1/autopilot/main"
 
 echo "autopilot - installer"
 echo "====================="
@@ -42,6 +42,12 @@ if ! curl -sfL "$RAW_BASE/packages/native-host/host.py" -o "$INSTALL_DIR/host.py
 fi
 chmod +x "$INSTALL_DIR/host.py"
 
+if ! curl -sfL "$RAW_BASE/uninstall.sh" -o "$INSTALL_DIR/uninstall.sh"; then
+  echo "Error: Failed to download uninstaller."
+  exit 1
+fi
+chmod +x "$INSTALL_DIR/uninstall.sh"
+
 # Create default config if it doesn't exist
 if [ ! -f "$INSTALL_DIR/config.json" ]; then
   echo '{"rules": []}' > "$INSTALL_DIR/config.json"
@@ -64,6 +70,7 @@ EOF
 echo ""
 echo "Installed:"
 echo "  Helper:   $INSTALL_DIR/host.py"
+echo "  Uninstall: $INSTALL_DIR/uninstall.sh"
 echo "  Manifest: $NATIVE_HOSTS_DIR/$HOST_NAME.json"
 echo ""
 echo "Done! Open the autopilot extension in your browser to configure rules."
