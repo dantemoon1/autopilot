@@ -13,13 +13,47 @@ body {
   padding: 16px;
 }
 
-/* Title */
+/* Title bar */
+#title-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
 #title {
   font-size: 14px;
   font-weight: 600;
   color: #fafafa;
-  margin-bottom: 14px;
   letter-spacing: -0.3px;
+}
+
+.title-sign-out {
+  font-size: 10px;
+  color: #3f3f46;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.title-sign-out:hover {
+  color: #71717a;
+}
+
+/* Update banner */
+.update-banner {
+  background: rgba(245, 158, 11, 0.08);
+  border-left: 2px solid #f59e0b;
+  padding: 6px 10px;
+  margin-bottom: 10px;
+  font-size: 10px;
+  color: #a1a1aa;
+  line-height: 1.5;
+}
+
+.update-banner code {
+  font-size: 9px;
+  color: #e4e4e7;
+  user-select: all;
 }
 
 /* Profile identity */
@@ -34,6 +68,7 @@ body {
 #rules-list[hidden] {
   display: none;
 }
+
 
 .profile-label {
   font-size: 11px;
@@ -158,7 +193,8 @@ body {
   height: 14px;
 }
 
-.browser-icon svg {
+.browser-icon svg,
+.browser-icon img {
   width: 14px;
   height: 14px;
 }
@@ -243,7 +279,8 @@ input[type="text"]:focus {
   height: 12px;
 }
 
-.rule-profile .browser-icon svg {
+.rule-profile .browser-icon svg,
+.rule-profile .browser-icon img {
   width: 12px;
   height: 12px;
 }
@@ -426,11 +463,13 @@ input[type="text"]:focus {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 2px;
   background: #1c1c21;
   border: 1px solid #27272a;
   border-radius: 6px;
   padding: 12px 10px;
+  min-height: 58px;
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
 }
@@ -446,6 +485,22 @@ input[type="text"]:focus {
 
 .btn-subscribe--best:hover {
   border-color: #818cf8;
+}
+
+.btn-subscribe--lifetime {
+  width: 100%;
+  flex-direction: row;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 9px 10px;
+  min-height: auto;
+}
+
+.plan-detail {
+  font-family: "SF Mono", "Menlo", "Consolas", monospace;
+  font-size: 11px;
+  color: #52525b;
 }
 
 .plan-price {
@@ -464,6 +519,19 @@ input[type="text"]:focus {
   border-radius: 3px;
   letter-spacing: 0.3px;
   text-transform: uppercase;
+}
+
+.setup-local-link {
+  display: block;
+  text-align: center;
+  font-size: 11px;
+  color: #52525b;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.setup-local-link:hover {
+  color: #a1a1aa;
 }
 
 .btn-google {
@@ -557,16 +625,16 @@ input[type="text"]:focus {
   justify-content: space-between;
   align-items: center;
   font-size: 10px;
-  color: #27272a;
+  color: #3f3f46;
   margin-top: 12px;
 }
 
 .footer-row a {
-  color: #27272a;
+  color: #3f3f46;
   text-decoration: none;
   transition: color 0.15s;
 }
 
 .footer-row a:hover {
-  color: #52525b;
+  color: #71717a;
 }

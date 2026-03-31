@@ -1,6 +1,7 @@
 importScripts("config.js");
 
 const NATIVE_HOST = "com.profile_router.host";
+const EXPECTED_HOST_VERSION = "1.0.0";
 const UNINSTALL_URL = "https://dantemoon1.github.io/autopilot/uninstall.html";
 // API_URL and WS_URL are loaded from config.js (production: autopilot-relay.fly.dev)
 // For local development, edit config.js to point to localhost:8080
@@ -81,36 +82,54 @@ async function signIn() {
   await chrome.tabs.create({ url: authUrl.toString() });
 }
 
-// Receive token from the callback page (external message)
+// Receive messages from website pages (external messaging)
+// Note: must NOT be async — return true synchronously to keep the channel open
 chrome.runtime.onMessageExternal.addListener(
-  async (message, sender, sendResponse) => {
-    if (message.type !== "oauth_callback" || !message.idToken) return;
-
-    try {
-      const res = await fetch(`${API_URL}/auth/google`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idToken: message.idToken }),
-      });
-      if (!res.ok) throw new Error("Authentication failed");
-
-      const data = await res.json();
-      await chrome.storage.local.set({
-        mode: "paid",
-        authToken: data.token,
-        user: data.user,
-      });
-
-      // Close the callback tab
-      if (sender.tab?.id) chrome.tabs.remove(sender.tab.id);
-
-      sendResponse({ success: true });
-    } catch (err) {
-      sendResponse({ error: err.message });
+  (message, sender, sendResponse) => {
+    if (message.type === "oauth_callback" && message.idToken) {
+      handleOAuthCallback(message, sender).then(sendResponse);
+      return true;
     }
-    return true;
+    if (message.type === "subscription_complete") {
+      handleSubscriptionCheck(sender).then(sendResponse);
+      return true;
+    }
   }
 );
+
+async function handleOAuthCallback(message, sender) {
+  try {
+    const res = await fetch(`${API_URL}/auth/google`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ idToken: message.idToken }),
+    });
+    if (!res.ok) throw new Error("Authentication failed");
+
+    const data = await res.json();
+    await chrome.storage.local.set({
+      mode: "paid",
+      authToken: data.token,
+      user: data.user,
+    });
+
+    if (sender.tab?.id) chrome.tabs.remove(sender.tab.id);
+    return { success: true };
+  } catch (err) {
+    return { error: err.message };
+  }
+}
+
+async function handleSubscriptionCheck(sender) {
+  try {
+    const { subscription } = await serverFetch("/subscription");
+    const active = subscription?.status === "active";
+    if (active && sender.tab?.id) chrome.tabs.remove(sender.tab.id);
+    return { active };
+  } catch {
+    return { active: false };
+  }
+}
 
 async function signOut() {
   await disconnectRelay();
@@ -199,6 +218,16 @@ function openInProfileFree(url, browser, profileDirectory) {
 }
 
 // ── Shared helpers ──
+
+function isVersionOutdated(current, expected) {
+  const c = current.split(".").map(Number);
+  const e = expected.split(".").map(Number);
+  for (let i = 0; i < 3; i++) {
+    if ((c[i] || 0) < (e[i] || 0)) return true;
+    if ((c[i] || 0) > (e[i] || 0)) return false;
+  }
+  return false;
+}
 
 function parseProfileKey(key) {
   const idx = key.indexOf(":");
@@ -295,7 +324,8 @@ chrome.contextMenus.onClicked.addListener(async (info) => {
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   // Messages from offscreen document
   if (message.source === "offscreen") {
-    if (message.type === "open-url" && message.url) {
+    if (message.type === "open-url" && message.url &&
+        (message.url.startsWith("http://") || message.url.startsWith("https://"))) {
       chrome.tabs.create({ url: message.url }).then((tab) => {
         chrome.windows.update(tab.windowId, { focused: true });
       });
@@ -333,6 +363,16 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true;
   }
 
+  if (message.action === "billing") {
+    serverFetch("/billing", { method: "POST" })
+      .then(({ url }) => {
+        chrome.tabs.create({ url });
+        sendResponse({ success: true });
+      })
+      .catch((err) => sendResponse({ error: err.message }));
+    return true;
+  }
+
   if (message.action === "check_subscription") {
     serverFetch("/subscription")
       .then(({ subscription }) => {
@@ -345,6 +385,14 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
   if (message.action === "sign_out") {
     signOut().then(() => sendResponse({ success: true }));
+    return true;
+  }
+
+  if (message.action === "detect_browser") {
+    // Ask the native host which browser launched it
+    listProfilesFree()
+      .then((response) => sendResponse({ browser: response.callingBrowser }))
+      .catch(() => sendResponse({ browser: null }));
     return true;
   }
 
@@ -369,6 +417,17 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     listProfilesFree()
       .then(() => sendResponse({ installed: true }))
       .catch(() => sendResponse({ installed: false }));
+    return true;
+  }
+
+  if (message.action === "check_host_version") {
+    nativeRequest({ action: "version" })
+      .then((res) => {
+        const current = res.version || "0.0.0";
+        const outdated = isVersionOutdated(current, EXPECTED_HOST_VERSION);
+        sendResponse({ version: current, outdated });
+      })
+      .catch(() => sendResponse({ version: null, outdated: false }));
     return true;
   }
 
@@ -415,12 +474,32 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
 
   if (message.action === "add_rule_paid") {
-    serverFetch("/rules", {
-      method: "POST",
-      body: JSON.stringify(message.rule),
-    })
-      .then((rule) => sendResponse({ success: true, rule }))
-      .catch((err) => sendResponse({ error: err.message }));
+    (async () => {
+      try {
+        const token = await getAuthToken();
+        const res = await fetch(`${API_URL}/rules`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(message.rule),
+        });
+        if (res.status === 401) {
+          await chrome.storage.local.remove(["mode", "authToken", "user", "paidProfileId"]);
+          sendResponse({ error: "Session expired" });
+          return;
+        }
+        const data = await res.json();
+        if (res.ok) {
+          sendResponse({ success: true, rule: data });
+        } else {
+          sendResponse({ error: data.error });
+        }
+      } catch (err) {
+        sendResponse({ error: err.message });
+      }
+    })();
     return true;
   }
 
@@ -436,7 +515,17 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
 const recentRedirects = new Map();
 
+// Clean up stale redirect entries
+function cleanRedirects() {
+  if (recentRedirects.size > 1000) recentRedirects.clear();
+  const cutoff = Date.now() - 5000;
+  for (const [url, time] of recentRedirects) {
+    if (time < cutoff) recentRedirects.delete(url);
+  }
+}
+
 chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
+  cleanRedirects();
   if (details.frameId !== 0) return;
 
   const lastRedirect = recentRedirects.get(details.url);

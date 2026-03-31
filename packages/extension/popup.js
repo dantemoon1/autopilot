@@ -7,12 +7,14 @@ const BROWSER_NAMES = {
   helium: "Helium",
 };
 
+// Real browser icons extracted as 16x16 PNGs (Chrome, Arc, Helium from local app bundles)
+// Brave and Edge use simplified SVGs since they're not installed locally
 const BROWSER_ICONS = {
-  chrome: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#EA4335"/><path d="M12 1a11 11 0 0 1 9.5 5.5H12z" fill="#FBBC04"/><path d="M21.5 6.5A11 11 0 0 1 12 23V12z" fill="#34A853"/><circle cx="12" cy="12" r="4.5" fill="#fff"/><circle cx="12" cy="12" r="3.2" fill="#4285F4"/></svg>',
-  brave: '<svg viewBox="0 0 24 24"><path d="M12 2L4 6v6c0 5.5 3.4 10.7 8 12 4.6-1.3 8-6.5 8-12V6l-8-4z" fill="#FB542B"/><path d="M12 7L8 9.5v4c0 2.5 1.7 5 4 6 2.3-1 4-3.5 4-6v-4L12 7z" fill="#fff" opacity=".3"/></svg>',
-  edge: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#0078D4"/><path d="M7 15c0-5 4-8.5 8.5-8-3 0-5 2.5-5 5.5s2 4.5 5 4.5c-1.5 2-4.5 4-8 3s-0.5-5-0.5-5z" fill="rgba(255,255,255,.6)"/></svg>',
-  arc: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#6E56CF"/><path d="M7 17A7 7 0 0 1 17 7" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="2.5" stroke-linecap="round"/></svg>',
-  helium: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#5AC8FA"/><circle cx="12" cy="12" r="4.5" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="1.5"/><circle cx="12" cy="7" r="1.5" fill="rgba(255,255,255,.6)"/></svg>',
+  chrome: '<img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAERlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAA6ABAAMAAAABAAEAAKACAAQAAAABAAAAEKADAAQAAAABAAAAEAAAAAA0VXHyAAACaklEQVQ4Ea1STUhUURT+7n1v1EmHxonRlKmQhggRKWqhCwOJfsBoGbkwCXKjrSIKs00bsVXQohYaRBJBSWFR0K4f+pGYoEwhnIgUxp9MHU2nnPfu7bvPedMiqE0HvnfOO+983zn3nQv8L9NanyNGiO//wKip9fsKE+QSa0knK1Zu9NnLb4aszLu3lpQCRdu2q0jzsazc1+T4RPpuIUS3LzDCxGbMfZPjrUeC7vSUECRKKQkBFnpxYWVMRa5e/4FwRLF+gvkaX2DJKH9paix2pieFIfKxRva8iZljdRFFwv13M5CWpkCpbYg0/ezTk4C1/FVsNFUQCJ9ox0RDM0TQRbW8DTV2hlWm8QeJVI+NWNeqKZR8eHZlbDDQfziuoYHIqbO4FG3Bwd5VHLjs4kKiBbLqPCBtThEAZp/mG/sC+uPsZ+t1VIuRWBDjOw+h7/mKr+3Fo7KN/Wxowpl/ZfEjW1EzV6Vdx4VyFW7tLs2l/nSCZCPiTbEm8PsIO8qrHaU13lcUIjH3EG0N6/IKJt4kBnNkG1ZJres3zp+lrqzGSaSGbaU0eoZvorO+BAO1jV6f1OIdpMe6UVxgysmt6vjJwDuCv8Z5JsSea0dDM868NCK8XHl0xRbQWpYmRXGdUSXqhxbNBFxj1P8HKb6r+8d7lyJuSKmsA6WUh8qAi9byDD/bXH0FyY/NnTHdJ433BR7xBWEZUi/bB9IX955e3lpQ4WQXMjgZWeCZd2WtLR0ZUfeCncPmMhi7RyjvCAxKOHIP/X5iA/E3M/t9wPE76dO+gCGEiPUEbwqChIjH40gmkwzzZshm/BnCuyi/AB3cEqXUkECLAAAAAElFTkSuQmCC">',
+  brave: '<img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAERlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAA6ABAAMAAAABAAEAAKACAAQAAAABAAAAEKADAAQAAAABAAAAEAAAAAA0VXHyAAAC+UlEQVQ4EW1TaUhUURT+3pvVcZssnEhKaDFUMEusGFoMCyGigrAi+1NUBkVE0EJBQRS00EZBCzQUBRbZjyglaftRCS1aKUhWtNrMOOM0zozj+OYtp3NfG0IHvnfvO/d83z333Hsk/DIrD1mMHIadITP+Z8TONCPxG6oIstbW1hYQ0SlGDyOdvH6Y+taUUqS+iiKr51BobhElTuznJdIZvQxfe3t7IXNtQsDNjtNGeoiSjcep/+Aq8k8D+csYJaDvBaAemQFQtH4ZDZw7REZqkCl0mbl5En/G8U9r/MiagvixS8hYWo7MFdthREOweCYBGkF73w15pAfJc0eRvNeB3E0r4T7TEJIkabrIYCILqJGNFRRakk9GIkpa4BNp/i9iF9O0b19J+/yR12IULMmn8Lxi4deYyzsARXo0RL0LXaS8um8Shp7eoujuFaS+f0Vq1xv6saGWUk03zTXl+SMKjJNJD/pFQYtE9SHZHZBcOVBam2Avr4bDu5hPLJtpQ5XhWl4HR/USEQrl7m1IWdmA02n+/xJgsrNqORInT0DOdiOzbg/U7jYYfQFmyNB6PsFRtQgDZw6if+9x5OxcDzl3hCnw975tpV5IuUCq5RJI15G1dh/Ut52mUPa2A5wRIXXtImQLP5TK2SZZfP4JFM+AJd8FKdMNyWaHEYuAkjEYA3EYP8L8Wqy8QR4sY6ywVcz8KyCusYir0y08/btqoLQ9gGN6DZzz6jhND6AS9HAvUo1XoDxs4frMQt6Nx6YAX+NkkYGopi481glTQYM6lCfN0D52cqrVsHvnQ3vXBaW5BRTnmNIKESpM8EhkUMgZPOPRo33pQnSLF6QkGRIyatZxEYHBy2fNEU47Rt15AWtxGYejjzOoFJMRLHCBYZr64TVFNs+g4CxQsNJCgRKZ/KNB4QVTKN3x8k+YGBuYO1II2Hw+31h2nGd8Z2gMSpzdQYFy7ofxoNj+rdxGoo/IYIQYVxnjBVccQZjoKtHO/ELgYPzx83SYiXMPa+effEenVQF1DCYAAAAASUVORK5CYII=">',
+  edge: '<img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAERlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAA6ABAAMAAAABAAEAAKACAAQAAAABAAAAEKADAAQAAAABAAAAEAAAAAA0VXHyAAACXElEQVQ4EZWTT0gUURzHP29md93cNU1FQ7GF7N8p6iJ06BRlHkyWIrpFl+jQoaC7UqcOkV06VQTRrdNGh6AO4iWIwBS00FQSXdZWd4eZ3ZkdZ+b1ZtVVswh/8Jvfe/N+3+/vz/s9gRIp5aAydyzLagr3/5NkMllUPi+FEHdD8GPP85TZm2xghoSCFRTbjsiZXJlMrsiCW1ZHNp1xj3RbM/1tqT+TKwrTNKVKqXqQdQLuTZp8t1wClIrQOkhhkYj/5EhDiUeHL9EeXY+nSkbbTnlr3OJbwcUrV5BegKge62hCJ6oHFGSe+7nnlKRdg0U2V29zNuNf5zCWDISmQPjE4j6Np5qJJhzlVkHX1jBY4UNphIHkxSq0RvBiZJ5fiz564iBaREdIl4GUh71q8SVWRMYdvMDD8wWzlSVYr5oawVQW/EhCfQTSMbnSmOPp5V5c1+XG5/fM+AbumkNZZbEaMTcT3+qBH0TxfYmvag9mJ2lpWA8Ri8VINuXV/5wiWMV2DE4Hx3cTdCRU5JBAqbRtXo/OY5RcihWLiLFMl+pBqwtX684x0HG+RlC7xsxYlvSbApomqJv+hBYIUq31vBvso7OlnnK5jK7rrJguXe1b11gj8H2fvmfTfFwIiC7/IFZcVjMOQjXuZOoATfURDNPmzNH9PLzdX81gxxyE7K+upUh363jNhwg0NSIynAXBxFye0YlFerobeXCzt5Z+uNg1ymHXM2NLZKZMZmazNDh5Ui37SJ89wYWeY9UytjGo+5Vy6F+PyXEcGerfZAMzLEI25TCszPU9Pucn6jkP/QZs2oj/II7HYwAAAABJRU5ErkJggg==">',
+  arc: '<img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAERlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAA6ABAAMAAAABAAEAAKACAAQAAAABAAAAEKADAAQAAAABAAAAEAAAAAA0VXHyAAACVElEQVQ4EX2TTWgTQRTH3+wm2SbNUmsDxdb6XUQxFqLxo9qLiicRPSkUb0qPHsSjIl7Fnj1UDwoeFYJelBbBgx8VlWKxBptWJWhtwdbUmOwmO/7/624IIn3w472dmfef92Zmlfw1Ay4awHgl8zDpBngRBEprnYQ/ATYCCiigAS2M6Wl1MAvuK6VKHLQgcBp+K/if/SsQrslD4G5YOpPDFkLfLuXKRYz3gxhgtcQM/Bb4KAVInB9NxKVQPCvnr5oyfGsA4zuDuW74riBOwBtMpjGZ6nYQr9O5R6ZorfRkXkl+llVk5PHoKXnxchDx+mCdn4TY99bY+K/B4lw5emaXlNQ7JMLQp8iDsYQcG9gnH/KG2LaWvXvWYuo757krjRUcuXBtJvJtoSqpbME+Wtdidqa0nl9QtbeTyk2oCGuWzZt4jV+An9vcwseTh9u152k5/rBTLi32Sa73kCraHbpSWpbi6DMldlLLgf45JJcBN/UPkJ5q85eHuie2p6pCkeFCj5y748mVTxuU6zjS5ZlSz+x28SrGsTa8iUYLFFCeI6mZ3BOd6V2jVvelRceTeql1B3KmJb74QxlvpiKS3taKtQ7Xg4YAW4mUy15LzDKlp0PJvdvZaYwtA1fex9L6+oglVjR8VCyfZ+GrJPESbyBeBeJOxcvGLOM3ZibwzWfLJ53QS6WDqs2eQvwZ1MBP3NAQd+aP8RqwjVqsxXiF5EnE/g7w3LWK5KfwXwFzWAFzXCaxn5uAC/eDNuC3BN9sFGQ1bOs5GAGOfxAIQlUqM17JKNT4nf8AUEO1P6yKUXEAAAAASUVORK5CYII=">',
+  helium: '<img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAERlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAA6ABAAMAAAABAAEAAKACAAQAAAABAAAAEKADAAQAAAABAAAAEAAAAAA0VXHyAAACZklEQVQ4Ea1TS2gTURQ983vzZpImbdWAi1Ja/KRaKGZRkK5E8ANiK1RcaRB3JUJRcNeNOzeKKLpwIyiF7iIISq2IQivdNKmIQa1aW2naNOqiqclkZt54Z9KWSOtKHzze3Ms555177xvgH5dUz/c8T6G4mTavz9d9VyRJWq6LsSFA5N09/SO3vn7OJBy7qlMM23YhhAdZluAKAQHZ0szWqd6xyxfvx6SPvlAgQGC1p3/46fTUxGEh7CDpE9tad8AXmp0vQpHl4GJJ1sAb2p4Xs5eOQpJcdc3OtqX8bIIxTrdqAYlpMu5dvwCr6qIveSdwQvahMxWS+JnwgO10+9K6AGeqoWpaGL3H4lBVBSOPMlgpOShXHHgwcPZ0AqVfVTx7+QEaN3xe0Kd1AWgsQtvFiSMHcOr4XnTGW1D4XgkcXBvqw0CyG8Ppd3gxsQCTh9aMAxsCnIcRDnu4emMcj8e+4MzJ/Yjvag7Kyc38QHLwCTJv84RpBDeMzQIaC0MnUyZXoOs6qrbAatmFJwDLEmBMh2lGaA4uTGMLByrVz5iE1Pl96O6KIT06h8Vlh0oQsB0PVwYO4tVkHncf5MhBw2YHOm+AoHf0OrOCyWyJ9jJSyT00aBcP058wt2AH/TDIhbGFgKXzJkeiluRmbOo60BhtojEzKIpAJNKIN+8tiqlEMwozFHUIYvk21ptYbGlvyy7OFw459qqfD5o3Ol4JTs6jRK49Wo2F0NEZyxKk6ONq2RqhY/Ambhe+rXY5dlkP8GTFPxWlBmPMtNrjxvTQOaRIMPeHgB/Qkunp7qTzrz8TSeZJlGbzn9Zv2UjoE//Rtr4AAAAASUVORK5CYII=">',
 };
 
 const BROWSER_ORDER = ["chrome", "brave", "edge", "arc", "helium"];
@@ -21,8 +23,9 @@ const CHEVRON_SVG = '<svg viewBox="0 0 24 24" width="10" height="10" fill="none"
 
 // Safe SVG parser — all SVG strings above are hardcoded constants, never user input.
 function parseSvg(svgString) {
-  const doc = new DOMParser().parseFromString(svgString, "image/svg+xml");
-  return document.adoptNode(doc.documentElement);
+  const wrapper = document.createElement("div");
+  wrapper.insertAdjacentHTML("afterbegin", svgString);
+  return wrapper.firstElementChild;
 }
 
 // Helpers
@@ -39,8 +42,12 @@ function parseProfileKey(key) {
 function browserIcon(browserId) {
   const span = document.createElement("span");
   span.className = "browser-icon";
-  const svg = BROWSER_ICONS[browserId];
-  if (svg) span.appendChild(parseSvg(svg));
+  const markup = BROWSER_ICONS[browserId];
+  if (markup) {
+    const wrapper = document.createElement("div");
+    wrapper.insertAdjacentHTML("afterbegin", markup);
+    span.appendChild(wrapper.firstElementChild);
+  }
   return span;
 }
 
@@ -48,12 +55,23 @@ function profileLabel(browserId, profileName) {
   return `${BROWSER_NAMES[browserId] || browserId} \u2013 ${profileName}`;
 }
 
-function detectBrowser() {
+async function detectBrowser() {
+  // Try userAgentData brands first (works for Brave, Edge)
   const brands = navigator.userAgentData?.brands || [];
   for (const { brand } of brands) {
     if (brand === "Brave") return "brave";
     if (brand === "Microsoft Edge") return "edge";
   }
+
+  // For browsers that don't identify in UA (Helium, Arc),
+  // ask the native host which browser we're in
+  try {
+    const response = await chrome.runtime.sendMessage({ action: "detect_browser" });
+    if (response?.browser) return response.browser;
+  } catch {
+    // Native host not available (paid-only user) — fall through
+  }
+
   const ua = navigator.userAgent;
   if (ua.includes("Arc")) return "arc";
   if (ua.includes("Helium")) return "helium";
@@ -109,6 +127,7 @@ class ProfileSelect {
   }
 
   populateFree(profiles, selectedValue) {
+    this._prependBrowser = true;
     this._profiles = profiles;
     this.dropdown.replaceChildren();
 
@@ -147,6 +166,7 @@ class ProfileSelect {
   }
 
   populatePaid(profiles, selectedValue) {
+    this._prependBrowser = false;
     this._profiles = profiles;
     this.dropdown.replaceChildren();
 
@@ -179,7 +199,7 @@ class ProfileSelect {
     this._triggerIcon.replaceWith(newIcon);
     this._triggerIcon = newIcon;
 
-    this._triggerText.textContent = profile.browser
+    this._triggerText.textContent = this._prependBrowser && profile.browser
       ? profileLabel(profile.browser, profile.name)
       : profile.name;
 
@@ -248,6 +268,29 @@ document.getElementById("sign-in-btn").addEventListener("click", async () => {
   }
 });
 
+document.getElementById("local-mode-link").addEventListener("click", async (e) => {
+  e.preventDefault();
+  await chrome.storage.local.set({ mode: "local" });
+  // If helper is already installed, go straight to rules UI
+  const hostCheck = await chrome.runtime.sendMessage({ action: "check_native_host" });
+  if (hostCheck.installed) {
+    init();
+  } else {
+    document.getElementById("setup-screen").hidden = true;
+    document.getElementById("local-setup-screen").hidden = false;
+  }
+});
+
+document.getElementById("back-to-signin").addEventListener("click", (e) => {
+  e.preventDefault();
+  document.getElementById("local-setup-screen").hidden = true;
+  document.getElementById("setup-screen").hidden = false;
+});
+
+document.getElementById("installed-btn").addEventListener("click", () => {
+  init();
+});
+
 document.getElementById("subscribe-monthly-btn").addEventListener("click", () => {
   chrome.runtime.sendMessage({ action: "checkout", plan: "monthly" });
 });
@@ -256,14 +299,37 @@ document.getElementById("subscribe-annual-btn").addEventListener("click", () => 
   chrome.runtime.sendMessage({ action: "checkout", plan: "annual" });
 });
 
+document.getElementById("subscribe-lifetime-btn").addEventListener("click", () => {
+  chrome.runtime.sendMessage({ action: "checkout", plan: "lifetime" });
+});
+
+document.getElementById("billing-link").addEventListener("click", (e) => {
+  e.preventDefault();
+  chrome.runtime.sendMessage({ action: "billing" });
+});
+
+document.getElementById("sign-out-link").addEventListener("click", async (e) => {
+  e.preventDefault();
+  await chrome.runtime.sendMessage({ action: "sign_out" });
+  init();
+});
+
+document.getElementById("switch-mode-link").addEventListener("click", async (e) => {
+  e.preventDefault();
+  await chrome.storage.local.remove(["mode", "currentProfile"]);
+  init();
+});
+
+
 document.getElementById("register-btn").addEventListener("click", async () => {
   const name = document.getElementById("profile-name-input").value.trim();
   if (!name) { showStatus("Enter a name"); return; }
 
+  const browser = await detectBrowser();
   const response = await chrome.runtime.sendMessage({
     action: "register_profile",
     name,
-    browser: detectBrowser(),
+    browser,
   });
 
   if (response.error) {
@@ -329,9 +395,11 @@ function renderRules(rules) {
     const { type, value } = describeRule(rule);
 
     let displayName;
+    let displayBrowser = null;
     if (currentMode === "paid") {
       const profile = profiles.find((p) => p.id === rule.target_profile_id);
       displayName = profile ? profile.name : "Unknown";
+      displayBrowser = profile?.browser;
     } else {
       const profile = profiles.find(
         (p) => p.browser === rule.browser && p.directory === rule.profileDirectory
@@ -339,6 +407,7 @@ function renderRules(rules) {
       displayName = profile
         ? profileLabel(rule.browser, profile.name)
         : rule.profileDirectory;
+      displayBrowser = rule.browser;
     }
 
     const matchDiv = document.createElement("div");
@@ -356,9 +425,7 @@ function renderRules(rules) {
 
     const profileSpan = document.createElement("span");
     profileSpan.className = "rule-profile";
-    if (currentMode === "free" && rule.browser) {
-      profileSpan.appendChild(browserIcon(rule.browser));
-    }
+    if (displayBrowser) profileSpan.appendChild(browserIcon(displayBrowser));
     profileSpan.appendChild(document.createTextNode(displayName));
 
     const deleteBtn = document.createElement("button");
@@ -401,7 +468,12 @@ addRuleBtn.addEventListener("click", async () => {
       if (!keyword) { showStatus("Enter a keyword"); return; }
       rule = { type: "keyword", keyword: keyword.toLowerCase(), targetProfileId: profileValue };
     }
-    await chrome.runtime.sendMessage({ action: "add_rule_paid", rule });
+    const result = await chrome.runtime.sendMessage({ action: "add_rule_paid", rule });
+    if (result?.error === "upgrade_required") {
+      mainUI.hidden = true;
+      document.getElementById("upgrade-screen").hidden = false;
+      return;
+    }
   } else {
     const { browser, directory: profileDirectory } = parseProfileKey(profileValue);
     let rule;
@@ -438,9 +510,16 @@ currentProfileSelect.onChange = async (value) => {
 // ── Init ──
 
 async function init() {
-  // Hide all screens
+  // Hide all screens and footer links
   setupScreen.hidden = true;
-  subscribeScreen.hidden = true;
+  document.getElementById("local-setup-screen").hidden = true;
+  document.getElementById("upgrade-screen").hidden = true;
+  document.getElementById("update-banner").hidden = true;
+  document.getElementById("billing-link").hidden = true;
+  document.getElementById("sign-out-link").hidden = true;
+  document.getElementById("switch-mode-link").hidden = true;
+  document.getElementById("donate-link").hidden = false;
+  document.getElementById("donate-link").style.marginLeft = "auto";
   registerScreen.hidden = true;
   mainUI.hidden = true;
 
@@ -448,11 +527,13 @@ async function init() {
   currentMode = modeInfo.mode;
 
   if (currentMode === "paid") {
-    // Check subscription status
+
+    // Show billing link for subscribers, hide donate
     const subRes = await chrome.runtime.sendMessage({ action: "check_subscription" });
-    if (!subRes.active) {
-      subscribeScreen.hidden = false;
-      return;
+    const isLifetime = subRes.subscription?.plan === "lifetime";
+    if (subRes.active) {
+      document.getElementById("donate-link").hidden = true;
+      if (!isLifetime) document.getElementById("billing-link").hidden = false;
     }
 
     // Check if profile is registered
@@ -475,27 +556,33 @@ async function init() {
     profiles = profilesRes.profiles || [];
     mainUI.hidden = false;
 
-    // In paid mode, show profile name as static text instead of dropdown
+    // Show profile name with icon
     const myProfile = profiles.find((p) => p.id === modeInfo.paidProfileId);
     if (myProfile) {
+      if (myProfile.browser) {
+        const icon = browserIcon(myProfile.browser);
+        currentProfileSelect._triggerIcon.replaceWith(icon);
+        currentProfileSelect._triggerIcon = icon;
+      }
       currentProfileSelect._triggerText.textContent = myProfile.name;
       currentProfileSelect.trigger.disabled = true;
     }
 
+    document.getElementById("sign-out-link").hidden = false;
     newProfileSelect.populatePaid(profiles);
     renderRules(rulesRes);
-  } else {
-    // Free mode: check native host
+  } else if (currentMode === "local") {
+    // Local mode: check native host
     const hostCheck = await chrome.runtime.sendMessage({ action: "check_native_host" });
 
     if (!hostCheck.installed) {
-      setupScreen.hidden = false;
+      document.getElementById("local-setup-screen").hidden = false;
       return;
     }
 
     const response = await chrome.runtime.sendMessage({ action: "list_profiles" });
     if (response.error) {
-      setupScreen.hidden = false;
+      document.getElementById("local-setup-screen").hidden = false;
       return;
     }
 
@@ -516,9 +603,19 @@ async function init() {
     const rules = await loadRules();
 
     mainUI.hidden = false;
+    document.getElementById("switch-mode-link").hidden = false;
     currentProfileSelect.populateFree(profiles, currentProfile);
     newProfileSelect.populateFree(profiles);
     renderRules(rules);
+
+    // Check for helper updates
+    const versionCheck = await chrome.runtime.sendMessage({ action: "check_host_version" });
+    if (versionCheck.outdated) {
+      document.getElementById("update-banner").hidden = false;
+    }
+  } else {
+    // Not signed in and not in local mode — show setup
+    setupScreen.hidden = false;
   }
 }
 

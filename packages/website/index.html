@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>autopilot — automatic profile routing across browsers</title>
+    <title>autopilot — links open in the right browser, automatically</title>
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
@@ -11,8 +11,8 @@
       <nav>
         <a href="./" class="nav-logo">autopilot</a>
         <div class="nav-links">
-          <a href="#install">Install</a>
-          <a href="#how-it-works">How it works</a>
+          <a href="#features">Features</a>
+          <a href="#pricing">Pricing</a>
           <a href="https://github.com/dantemoon1/autopilot" class="nav-link-external">GitHub</a>
         </div>
       </nav>
@@ -24,79 +24,88 @@
           </svg>
         </div>
         <h1>autopilot</h1>
-        <p class="hero-tagline">URLs open in the right browser profile, automatically.</p>
-        <p class="hero-sub">Route GitHub to your work profile, AWS to your dev account. Set rules once and forget about it.</p>
+        <p class="hero-tagline">Links open in the right browser, automatically.</p>
+        <p class="hero-sub">Click a link anywhere. GitHub opens in your work browser. AWS opens in your dev profile. No more copy-pasting URLs between windows.</p>
         <div class="hero-actions">
           <a href="https://chromewebstore.google.com/" class="btn btn-primary">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
-            Chrome Web Store
+            Get the Extension
           </a>
-          <a href="https://github.com/dantemoon1/autopilot" class="btn btn-secondary">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.604-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0 1 12 6.836a9.59 9.59 0 0 1 2.504.337c1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.161 22 16.416 22 12c0-5.523-4.477-10-10-10z"/></svg>
-            View on GitHub
+          <a href="#pricing" class="btn btn-secondary">
+            See Pricing
           </a>
         </div>
       </header>
 
-      <section id="how-it-works" class="section">
-        <h2>How it works</h2>
-        <div class="steps">
-          <div class="step">
-            <span class="step-num">1</span>
-            <div>
-              <h3>Install the extension</h3>
-              <p>Add autopilot to each browser profile from the Chrome Web Store.</p>
-            </div>
+      <section id="features" class="section features">
+        <h2>What it does</h2>
+        <div class="feature-grid">
+          <div class="feature">
+            <h3>Route by domain</h3>
+            <p>Send <code>github.com</code> to your work profile and <code>netflix.com</code> to your personal one. Subdomains included.</p>
           </div>
-          <div class="step">
-            <span class="step-num">2</span>
-            <div>
-              <h3>Install the helper</h3>
-              <p>Run one command in Terminal to set up the native bridge.</p>
-            </div>
+          <div class="feature">
+            <h3>Route by keyword</h3>
+            <p>Match any URL containing <code>aws</code>, <code>teams</code>, or <code>jira</code> — catches long redirect URLs that domain rules miss.</p>
           </div>
-          <div class="step">
-            <span class="step-num">3</span>
-            <div>
-              <h3>Set your rules</h3>
-              <p>Match by domain or keyword. URLs automatically open in the right profile.</p>
-            </div>
+          <div class="feature">
+            <h3>Works across browsers</h3>
+            <p>Chrome, Brave, Edge, Arc, Helium. Route a link from Chrome to Brave, or any combination. Not just between profiles — between browsers.</p>
+          </div>
+          <div class="feature">
+            <h3>Right-click any link</h3>
+            <p>Don't want a permanent rule? Right-click any link and choose "Open in..." to send it to another browser or profile on the spot.</p>
+          </div>
+          <div class="feature">
+            <h3>Works across computers</h3>
+            <p>Premium users can route links between their home and work machines. Click a link at home, it opens on your work laptop.</p>
+          </div>
+          <div class="feature">
+            <h3>Set it and forget it</h3>
+            <p>Configure your rules once. Every link after that just goes where it should — no clicking, no thinking.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="pricing" class="section">
+        <h2>Pricing</h2>
+        <p class="section-sub">Sign in and start routing. Upgrade when you need more.</p>
+        <div class="pricing-grid">
+          <div class="pricing-card">
+            <h3>Free</h3>
+            <p class="pricing-price">$0</p>
+            <p class="pricing-desc">Sign in with Google to get started. No setup, no terminal commands.</p>
+            <ul class="pricing-features">
+              <li>1 routing rule</li>
+              <li>Route between browsers and profiles</li>
+              <li>Domain and keyword matching</li>
+              <li>Right-click context menu</li>
+            </ul>
+          </div>
+          <div class="pricing-card pricing-card--highlight">
+            <h3>Premium</h3>
+            <p class="pricing-price">$3<span>/mo</span></p>
+            <p class="pricing-desc">Unlimited rules. Route links across browsers and computers.</p>
+            <ul class="pricing-features">
+              <li>Unlimited routing rules</li>
+              <li>Route links across computers</li>
+              <li>Priority support</li>
+            </ul>
+            <p class="pricing-alt">Also available: $24/yr or $49 one-time</p>
           </div>
         </div>
       </section>
 
       <section id="install" class="section">
-        <h2>Install the helper</h2>
-        <p class="section-sub">After installing the extension, run this in Terminal:</p>
+        <h2>Self-host</h2>
+        <p class="section-sub">Prefer to run things yourself? Install the local helper for unlimited rules, no account needed.</p>
         <div class="install-block">
           <code id="install-command">curl -fsSL https://dantemoon1.github.io/autopilot/install | bash</code>
           <button id="copy-btn" title="Copy">
             <svg id="copy-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
           </button>
         </div>
-        <p class="install-note">Works on macOS. No admin required.</p>
-      </section>
-
-      <section class="section features">
-        <h2>Features</h2>
-        <div class="feature-grid">
-          <div class="feature">
-            <h3>Domain rules</h3>
-            <p>Route entire domains like <code>github.com</code> to a specific profile, with optional subdomain matching.</p>
-          </div>
-          <div class="feature">
-            <h3>Keyword matching</h3>
-            <p>Match URLs containing <code>aws</code>, <code>teams</code>, or any keyword — great for long auth redirect URLs.</p>
-          </div>
-          <div class="feature">
-            <h3>Shared config</h3>
-            <p>Rules are shared across profiles. Configure once, works everywhere.</p>
-          </div>
-          <div class="feature">
-            <h3>Multi-browser</h3>
-            <p>Works with Chrome, Brave, Edge, Arc, and Helium. Route URLs across any browser and profile.</p>
-          </div>
-        </div>
+        <p class="install-note">macOS only. Requires Terminal. <a href="https://github.com/dantemoon1/autopilot" style="color: #52525b">View source on GitHub</a></p>
       </section>
 
       <footer>

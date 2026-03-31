@@ -61,7 +61,8 @@ function connect() {
   };
 
   ws.onmessage = (event) => {
-    const msg = JSON.parse(event.data);
+    let msg;
+    try { msg = JSON.parse(event.data); } catch { return; }
 
     if (msg.type === "authenticated") {
       chrome.runtime.sendMessage({
@@ -101,6 +102,9 @@ function connect() {
 function disconnect() {
   clearTimeout(reconnectTimer);
   reconnectTimer = null;
+  currentUrl = null;
+  currentToken = null;
+  currentProfileId = null;
   if (ws) {
     ws.onclose = null;
     ws.close();

@@ -6,6 +6,8 @@ Bridges the browser extension to the OS, allowing it to open URLs
 in a specific browser profile across multiple Chromium browsers.
 """
 
+HOST_VERSION = "1.0.0"
+
 import ctypes
 import ctypes.util
 import json
@@ -224,6 +226,9 @@ def main():
             send_message({"success": True})
         except Exception as e:
             send_message({"error": str(e)})
+
+    elif action == "version":
+        send_message({"version": HOST_VERSION})
 
     else:
         send_message({"error": f"Unknown action: {action}"})

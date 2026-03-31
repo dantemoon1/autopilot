@@ -46,16 +46,53 @@
       </nav>
 
       <div class="callback-page">
-        <div class="callback-icon">
+        <div class="callback-icon" id="icon">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
         </div>
-        <p class="callback-title">You're subscribed!</p>
-        <p class="callback-sub">Close this tab and reopen the autopilot extension to get started.</p>
+        <p class="callback-title" id="title">You're subscribed!</p>
+        <p class="callback-sub" id="sub">Connecting to autopilot...</p>
       </div>
 
       <footer>
         <span class="footer-logo">autopilot</span>
       </footer>
     </div>
+
+    <script>
+      var EXTENSION_ID = "eifgnohgbaefkgpgiipagieecnfjkome";
+      var attempts = 0;
+      var maxAttempts = 30;
+
+      function notifyExtension() {
+        attempts++;
+        if (chrome.runtime && chrome.runtime.sendMessage) {
+          chrome.runtime.sendMessage(
+            EXTENSION_ID,
+            { type: "subscription_complete" },
+            function(response) {
+              if (chrome.runtime.lastError || !response) {
+                if (attempts < maxAttempts) {
+                  setTimeout(notifyExtension, 2000);
+                } else {
+                  document.getElementById("sub").textContent = "You can close this tab and reopen the extension.";
+                }
+                return;
+              }
+              if (response.active) {
+                document.getElementById("sub").textContent = "You're all set! You can close this tab and open the extension.";
+              } else if (attempts < maxAttempts) {
+                setTimeout(notifyExtension, 2000);
+              } else {
+                document.getElementById("sub").textContent = "You can close this tab and reopen the extension.";
+              }
+            }
+          );
+        } else {
+          document.getElementById("sub").textContent = "You can close this tab and reopen the extension.";
+        }
+      }
+
+      setTimeout(notifyExtension, 1500);
+    </script>
   </body>
 </html>
