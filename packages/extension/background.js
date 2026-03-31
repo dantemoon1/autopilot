@@ -1,4 +1,9 @@
 const NATIVE_HOST = "com.profile_router.host";
+const UNINSTALL_URL = "https://dantemoon1.github.io/autopilot/uninstall.html";
+
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.runtime.setUninstallURL(UNINSTALL_URL);
+});
 
 function urlMatchesRule(url, rule) {
   try {
