@@ -60,6 +60,8 @@ def save_rules(rules):
 
 
 def open_in_profile(url, profile_directory):
+    if not os.path.exists(HELIUM_PATH):
+        raise FileNotFoundError(f"Browser not found at {HELIUM_PATH}")
     subprocess.Popen(
         [HELIUM_PATH, f"--profile-directory={profile_directory}", url],
         stdout=subprocess.DEVNULL,
@@ -83,8 +85,11 @@ def main():
         if not url.startswith(("http://", "https://")):
             send_message({"success": False, "error": "Only http/https URLs allowed"})
             return
-        open_in_profile(url, profile)
-        send_message({"success": True})
+        try:
+            open_in_profile(url, profile)
+            send_message({"success": True})
+        except Exception as e:
+            send_message({"success": False, "error": str(e)})
 
     elif action == "list_profiles":
         try:

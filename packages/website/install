@@ -12,32 +12,23 @@ echo ""
 
 # Check python3 is available
 if ! command -v python3 &>/dev/null; then
-  echo "Error: python3 is required but not found"
+  echo "Error: python3 is required but not found."
+  echo ""
+  echo "Install it with:"
+  echo "  xcode-select --install"
   exit 1
 fi
 
-# Detect browser and set paths
-detect_browser() {
-  if [ -d "$HOME/Library/Application Support/net.imput.helium" ]; then
-    BROWSER_NAME="Helium"
-    NATIVE_HOSTS_DIR="$HOME/Library/Application Support/net.imput.helium/NativeMessagingHosts"
-  elif [ -d "$HOME/Library/Application Support/Google/Chrome" ]; then
-    BROWSER_NAME="Chrome"
-    NATIVE_HOSTS_DIR="$HOME/Library/Application Support/Google/Chrome/NativeMessagingHosts"
-  elif [ -d "$HOME/Library/Application Support/BraveSoftware/Brave-Browser" ]; then
-    BROWSER_NAME="Brave"
-    NATIVE_HOSTS_DIR="$HOME/Library/Application Support/BraveSoftware/Brave-Browser/NativeMessagingHosts"
-  elif [ -d "$HOME/Library/Application Support/Chromium" ]; then
-    BROWSER_NAME="Chromium"
-    NATIVE_HOSTS_DIR="$HOME/Library/Application Support/Chromium/NativeMessagingHosts"
-  else
-    echo "Error: No supported Chromium browser found."
-    exit 1
-  fi
-}
+# Helium only for now
+NATIVE_HOSTS_DIR="$HOME/Library/Application Support/net.imput.helium/NativeMessagingHosts"
 
-detect_browser
-echo "Detected browser: $BROWSER_NAME"
+if [ ! -d "$HOME/Library/Application Support/net.imput.helium" ]; then
+  echo "Error: Helium browser not found."
+  echo "autopilot currently only supports Helium. More browsers coming soon."
+  exit 1
+fi
+
+echo "Detected browser: Helium"
 echo ""
 
 # Create install directory
@@ -45,7 +36,10 @@ mkdir -p "$INSTALL_DIR"
 
 # Download native host script
 echo "Downloading native helper..."
-curl -sL "$RAW_BASE/packages/native-host/host.py" -o "$INSTALL_DIR/host.py"
+if ! curl -sfL "$RAW_BASE/packages/native-host/host.py" -o "$INSTALL_DIR/host.py"; then
+  echo "Error: Failed to download native helper."
+  exit 1
+fi
 chmod +x "$INSTALL_DIR/host.py"
 
 # Create default config if it doesn't exist
