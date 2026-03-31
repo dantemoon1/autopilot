@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div id="app">
+      <h1 id="title">autopilot</h1>
+
+      <div id="native-host-warning" class="warning" hidden>
+        <p>Helper not installed. Run this in Terminal:</p>
+        <div class="install-cmd">
+          <code id="install-command">curl -sL https://YOURDOMAIN.dev/install | bash</code>
+          <button id="copy-cmd-btn" title="Copy"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+        </div>
+      </div>
+
+      <div id="profile-bar">
+        <span class="profile-label">This profile is</span>
+        <select id="current-profile"></select>
+      </div>
+
+      <div id="rules-list"></div>
+
+      <button id="show-form-btn">+ Add Rule</button>
+      <div id="add-rule-form" hidden>
+        <div class="form-row form-row-inline">
+          <label class="form-label">Rule:</label>
+          <select id="new-type">
+            <option value="domain">Domain</option>
+            <option value="keyword">URL contains</option>
+          </select>
+        </div>
+
+        <div id="domain-fields" class="form-row form-row-inline">
+          <input
+            type="text"
+            id="new-domain"
+            placeholder="github.com"
+          />
+          <label class="checkbox-label">
+            <input type="checkbox" id="new-subdomains" checked />
+            Subdomains
+          </label>
+        </div>
+
+        <div id="keyword-fields" class="form-row" hidden>
+          <input
+            type="text"
+            id="new-keyword"
+            placeholder="aws, teams, etc."
+          />
+        </div>
+
+        <div class="form-row form-row-inline">
+          <label class="form-label">Open in:</label>
+          <select id="new-profile"></select>
+        </div>
+
+        <div class="form-row">
+          <button id="add-rule-btn">Add Rule</button>
+        </div>
+      </div>
+
+      <p id="status-message"></p>
+      <a href="https://ko-fi.com/dantemoony" target="_blank" class="made-with">Made with ♡ in OC, CA</a>
+    </div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
