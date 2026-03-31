@@ -1,7 +1,9 @@
+importScripts("config.js");
+
 const NATIVE_HOST = "com.profile_router.host";
 const UNINSTALL_URL = "https://dantemoon1.github.io/autopilot/uninstall.html";
-const API_URL = "http://localhost:8080"; // TODO: update for production
-const WS_URL = "ws://localhost:8080"; // TODO: update for production
+// API_URL and WS_URL are loaded from config.js (production: autopilot-relay.fly.dev)
+// For local development, edit config.js to point to localhost:8080
 const GOOGLE_CLIENT_ID =
   "245847655493-5fg3e54qu09lmvcsrdad4is2i1k8a01t.apps.googleusercontent.com";
 
