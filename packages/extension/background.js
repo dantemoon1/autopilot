@@ -74,52 +74,41 @@ async function signIn() {
   authUrl.searchParams.set("nonce", nonce);
   authUrl.searchParams.set("prompt", "select_account");
 
-  // Open Google sign-in in a new tab
-  const tab = await chrome.tabs.create({ url: authUrl.toString() });
-
-  // Wait for the tab to redirect to our callback with the token
-  const idToken = await new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => {
-      chrome.tabs.onUpdated.removeListener(listener);
-      reject(new Error("Sign-in timed out"));
-    }, 120_000);
-
-    function listener(tabId, changeInfo) {
-      if (tabId !== tab.id || !changeInfo.url) return;
-      if (!changeInfo.url.startsWith(AUTH_CALLBACK_URL)) return;
-
-      chrome.tabs.onUpdated.removeListener(listener);
-      clearTimeout(timeout);
-
-      const fragment = new URL(changeInfo.url).hash.slice(1);
-      const token = new URLSearchParams(fragment).get("id_token");
-      if (token) {
-        chrome.tabs.remove(tabId);
-        resolve(token);
-      } else {
-        chrome.tabs.remove(tabId);
-        reject(new Error("No ID token returned"));
-      }
-    }
-
-    chrome.tabs.onUpdated.addListener(listener);
-  });
-
-  const res = await fetch(`${API_URL}/auth/google`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ idToken }),
-  });
-  if (!res.ok) throw new Error("Authentication failed");
-
-  const data = await res.json();
-  await chrome.storage.local.set({
-    mode: "paid",
-    authToken: data.token,
-    user: data.user,
-  });
-  return data;
+  // Open Google sign-in in a new tab — the callback page sends the token back
+  // via chrome.runtime.sendMessage (externally_connectable)
+  await chrome.tabs.create({ url: authUrl.toString() });
 }
+
+// Receive token from the callback page (external message)
+chrome.runtime.onMessageExternal.addListener(
+  async (message, sender, sendResponse) => {
+    if (message.type !== "oauth_callback" || !message.idToken) return;
+
+    try {
+      const res = await fetch(`${API_URL}/auth/google`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken: message.idToken }),
+      });
+      if (!res.ok) throw new Error("Authentication failed");
+
+      const data = await res.json();
+      await chrome.storage.local.set({
+        mode: "paid",
+        authToken: data.token,
+        user: data.user,
+      });
+
+      // Close the callback tab
+      if (sender.tab?.id) chrome.tabs.remove(sender.tab.id);
+
+      sendResponse({ success: true });
+    } catch (err) {
+      sendResponse({ error: err.message });
+    }
+    return true;
+  }
+);
 
 async function signOut() {
   await disconnectRelay();

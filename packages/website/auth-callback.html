@@ -27,6 +27,12 @@
       .callback-icon svg {
         color: #22c55e;
       }
+      .callback-icon--error {
+        background: rgba(239, 68, 68, 0.1);
+      }
+      .callback-icon--error svg {
+        color: #ef4444;
+      }
       .callback-title {
         font-size: 18px;
         font-weight: 600;
@@ -46,16 +52,45 @@
       </nav>
 
       <div class="callback-page">
-        <div class="callback-icon">
+        <div class="callback-icon" id="icon">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
         </div>
-        <p class="callback-title">Signed in</p>
-        <p class="callback-sub">You can close this tab and return to the extension.</p>
+        <p class="callback-title" id="title">Signing in...</p>
+        <p class="callback-sub" id="sub">Connecting to autopilot extension.</p>
       </div>
 
       <footer>
         <span class="footer-logo">autopilot</span>
       </footer>
     </div>
+
+    <script>
+      const EXTENSION_ID = "eifgnohgbaefkgpgiipagieecnfjkome";
+
+      const hash = window.location.hash.slice(1);
+      const params = new URLSearchParams(hash);
+      const idToken = params.get("id_token");
+
+      if (idToken && chrome.runtime && chrome.runtime.sendMessage) {
+        chrome.runtime.sendMessage(
+          EXTENSION_ID,
+          { type: "oauth_callback", idToken: idToken },
+          function(response) {
+            if (response && response.success) {
+              document.getElementById("title").textContent = "Signed in";
+              document.getElementById("sub").textContent = "You can close this tab and reopen the extension.";
+            } else {
+              document.getElementById("icon").classList.add("callback-icon--error");
+              document.getElementById("title").textContent = "Something went wrong";
+              document.getElementById("sub").textContent = response?.error || "Could not connect to the extension. Is autopilot installed?";
+            }
+          }
+        );
+      } else {
+        document.getElementById("icon").classList.add("callback-icon--error");
+        document.getElementById("title").textContent = "Extension not found";
+        document.getElementById("sub").textContent = "Make sure autopilot is installed and try again.";
+      }
+    </script>
   </body>
 </html>
