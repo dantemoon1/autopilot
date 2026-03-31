@@ -1,8 +1,63 @@
 const NATIVE_HOST = "com.profile_router.host";
 const UNINSTALL_URL = "https://dantemoon1.github.io/autopilot/uninstall.html";
 
+const BROWSER_NAMES = {
+  chrome: "Chrome",
+  brave: "Brave",
+  edge: "Edge",
+  arc: "Arc",
+  helium: "Helium",
+};
+
 chrome.runtime.onInstalled.addListener(() => {
   chrome.runtime.setUninstallURL(UNINSTALL_URL);
+  buildContextMenu();
+});
+
+chrome.runtime.onStartup.addListener(() => {
+  buildContextMenu();
+});
+
+async function buildContextMenu() {
+  await chrome.contextMenus.removeAll();
+  try {
+    const response = await listProfiles();
+    const profiles = (response.profiles || []).filter((p) => p.hasExtension);
+    if (profiles.length === 0) return;
+
+    chrome.contextMenus.create({
+      id: "autopilot-parent",
+      title: "Open in...",
+      contexts: ["link"],
+    });
+
+    for (const p of profiles) {
+      const label = `${BROWSER_NAMES[p.browser] || p.browser} \u2013 ${p.name}`;
+      chrome.contextMenus.create({
+        id: `autopilot:${p.browser}:${p.directory}`,
+        parentId: "autopilot-parent",
+        title: label,
+        contexts: ["link"],
+      });
+    }
+  } catch {
+    // Native host not installed — no context menu
+  }
+}
+
+chrome.contextMenus.onClicked.addListener(async (info) => {
+  if (!info.menuItemId.startsWith("autopilot:")) return;
+  const url = info.linkUrl;
+  if (!url || !url.startsWith("http")) return;
+
+  const parts = info.menuItemId.split(":");
+  const browser = parts[1];
+  const directory = parts.slice(2).join(":");
+  try {
+    await openInProfile(url, browser, directory);
+  } catch (err) {
+    console.error("autopilot: context menu open failed", err);
+  }
 });
 
 function urlMatchesRule(url, rule) {
@@ -48,6 +103,16 @@ function nativeRequest(message) {
   });
 }
 
+function parseProfileKey(key) {
+  const idx = key.indexOf(":");
+  if (idx === -1) return { browser: "", directory: key };
+  return { browser: key.slice(0, idx), directory: key.slice(idx + 1) };
+}
+
+function profileKey(browser, directory) {
+  return `${browser}:${directory}`;
+}
+
 async function getConfig() {
   const [storageResult, rulesResponse] = await Promise.all([
     chrome.storage.local.get("currentProfile"),
@@ -59,8 +124,8 @@ async function getConfig() {
   };
 }
 
-function openInProfile(url, profileDirectory) {
-  return nativeRequest({ action: "open", url, profile: profileDirectory });
+function openInProfile(url, browser, profileDirectory) {
+  return nativeRequest({ action: "open", url, browser, profile: profileDirectory });
 }
 
 function listProfiles() {
@@ -71,7 +136,10 @@ function listProfiles() {
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.action === "list_profiles") {
     listProfiles()
-      .then((response) => sendResponse({ profiles: response.profiles }))
+      .then((response) => {
+        buildContextMenu();
+        sendResponse(response);
+      })
       .catch((err) => sendResponse({ error: err.message }));
     return true;
   }
@@ -113,17 +181,19 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
   const { rules, currentProfile } = await getConfig();
   if (!currentProfile || rules.length === 0) return;
 
+  const current = parseProfileKey(currentProfile);
+
   for (const rule of rules) {
     if (
       urlMatchesRule(details.url, rule) &&
-      rule.profileDirectory !== currentProfile
+      profileKey(rule.browser, rule.profileDirectory) !== currentProfile
     ) {
       try {
         // Mark as recently redirected
         recentRedirects.set(details.url, Date.now());
 
         // Open in the correct profile first — only close tab if it succeeds
-        const result = await openInProfile(details.url, rule.profileDirectory);
+        const result = await openInProfile(details.url, rule.browser, rule.profileDirectory);
         if (result.success) {
           await chrome.tabs.remove(details.tabId);
         }

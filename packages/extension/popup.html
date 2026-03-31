@@ -18,7 +18,7 @@
 
       <div id="profile-bar">
         <span class="profile-label">This profile is</span>
-        <select id="current-profile"></select>
+        <div id="current-profile-select"></div>
       </div>
 
       <div id="rules-list"></div>
@@ -55,7 +55,7 @@
 
         <div class="form-row form-row-inline">
           <label class="form-label">Open in:</label>
-          <select id="new-profile"></select>
+          <div id="new-profile-select"></div>
         </div>
 
         <div class="form-row">
@@ -64,7 +64,11 @@
       </div>
 
       <p id="status-message"></p>
-      <a href="https://ko-fi.com/dantemoony" target="_blank" class="made-with">Made with ♡ in OC, CA</a>
+      <div class="footer-row">
+        <span>Made with ♡ in OC, CA</span>
+        <a href="https://github.com/dantemoon1/autopilot/issues" target="_blank">Bug?</a>
+        <a href="https://ko-fi.com/dantemoony" target="_blank">Donate</a>
+      </div>
     </div>
 
     <script src="popup.js"></script>

@@ -19,17 +19,32 @@ if ! command -v python3 &>/dev/null; then
   exit 1
 fi
 
-# Helium only for now
-NATIVE_HOSTS_DIR="$HOME/Library/Application Support/net.imput.helium/NativeMessagingHosts"
+# Browser registry: name|app_path|native_hosts_dir
+BROWSERS=(
+  "Chrome|/Applications/Google Chrome.app|$HOME/Library/Application Support/Google/Chrome/NativeMessagingHosts"
+  "Brave|/Applications/Brave Browser.app|$HOME/Library/Application Support/BraveSoftware/Brave-Browser/NativeMessagingHosts"
+  "Edge|/Applications/Microsoft Edge.app|$HOME/Library/Application Support/Microsoft Edge/NativeMessagingHosts"
+  "Arc|/Applications/Arc.app|$HOME/Library/Application Support/Arc/User Data/NativeMessagingHosts"
+  "Helium|/Applications/Helium.app|$HOME/Library/Application Support/net.imput.helium/NativeMessagingHosts"
+)
 
-if [ ! -d "$HOME/Library/Application Support/net.imput.helium" ]; then
-  echo "Error: Helium browser not found."
-  echo "autopilot currently only supports Helium. More browsers coming soon."
+# Detect installed browsers
+DETECTED=()
+for entry in "${BROWSERS[@]}"; do
+  IFS='|' read -r name app_path native_dir <<< "$entry"
+  if [ -d "$app_path" ]; then
+    DETECTED+=("$entry")
+    echo "  Detected: $name"
+  fi
+done
+
+echo ""
+
+if [ ${#DETECTED[@]} -eq 0 ]; then
+  echo "Error: No supported browsers found."
+  echo "Supported: Chrome, Brave, Edge, Arc, Helium"
   exit 1
 fi
-
-echo "Detected browser: Helium"
-echo ""
 
 # Create install directory
 mkdir -p "$INSTALL_DIR"
@@ -53,9 +68,12 @@ if [ ! -f "$INSTALL_DIR/config.json" ]; then
   echo '{"rules": []}' > "$INSTALL_DIR/config.json"
 fi
 
-# Create native messaging host manifest
-mkdir -p "$NATIVE_HOSTS_DIR"
-cat > "$NATIVE_HOSTS_DIR/$HOST_NAME.json" <<EOF
+# Install native messaging host manifest for each detected browser
+echo ""
+for entry in "${DETECTED[@]}"; do
+  IFS='|' read -r name app_path native_dir <<< "$entry"
+  mkdir -p "$native_dir"
+  cat > "$native_dir/$HOST_NAME.json" <<EOF
 {
   "name": "$HOST_NAME",
   "description": "autopilot - opens URLs in the correct browser profile",
@@ -66,11 +84,12 @@ cat > "$NATIVE_HOSTS_DIR/$HOST_NAME.json" <<EOF
   ]
 }
 EOF
+  echo "  $name: $native_dir/$HOST_NAME.json"
+done
 
 echo ""
 echo "Installed:"
-echo "  Helper:   $INSTALL_DIR/host.py"
+echo "  Helper:    $INSTALL_DIR/host.py"
 echo "  Uninstall: $INSTALL_DIR/uninstall.sh"
-echo "  Manifest: $NATIVE_HOSTS_DIR/$HOST_NAME.json"
 echo ""
 echo "Done! Open the autopilot extension in your browser to configure rules."

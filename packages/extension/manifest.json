@@ -5,6 +5,7 @@
   "description": "Automatically open URLs in the right browser profile",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAk09dWwqnaj9olA7pTGJZb3mkIfFmZpoX/DYuye8SJVdkSZ4/dswrGudenVe4hzBVgv+8yw1Bh7yhopnn1E37jbGP04ozYa+TKF1Kcy5Y+Ms7C1sPgMS2VCMjKTdEDYG+0Fq/5d1212SHhNMrVeMUkmYQ1/X4y3zcxzIpeBakN3dq64slDyXFtWMCpoH11QvoOOBFu0aX5wYNY87Y/CVW2Ks0dsw3Jyv/VDtGSpRS4r9ADowEeDLHvN5mjz6DO7TRVEVdJz2da63vmn00s+B3J99guRxrMBv6e7yBDw5wU1T6ngrenJiP7s/Sa7L/+uUykEiIcm9bHnEwVmcP5zsCrwIDAQAB",
   "permissions": [
+    "contextMenus",
     "nativeMessaging",
     "storage",
     "webNavigation"
