@@ -1,5 +1,13 @@
 node_modules/
 .DS_Store
 *.pem
+*.pyc
+__pycache__/
+.superset/
+.env*
+.vscode/
+.idea/
 CLAUDE.md
 AGENTS.md
+packages/extension/store/autopilot-extension.zip
+packages/extension/store/setup-tip-mockup.png

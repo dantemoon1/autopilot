@@ -1,6 +1,6 @@
 {
   "name": "com.profile_router.host",
-  "description": "Profile Router - Opens URLs in specific Helium browser profiles",
+  "description": "autopilot - Opens URLs in the correct browser profile",
   "path": "PLACEHOLDER_HOST_PATH",
   "type": "stdio",
   "allowed_origins": [
