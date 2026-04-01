@@ -12,32 +12,110 @@
         <a href="./" class="nav-logo">autopilot</a>
         <div class="nav-links">
           <a href="./">Home</a>
+          <a href="terms.html">Terms</a>
         </div>
       </nav>
 
       <section class="section" style="border-top: none; padding-top: 48px;">
         <h2>Privacy Policy</h2>
         <div class="prose">
-          <p><strong>Last updated: March 31, 2026</strong></p>
+          <p><strong>Last updated: April 1, 2026</strong></p>
 
-          <p>autopilot operates in two modes: cloud mode and local mode. What data we handle depends on which mode you use.</p>
+          <p>autopilot ("we", "us") is operated by Dante Moon. This policy explains what data we collect, why, and your rights regarding it.</p>
 
-          <p><strong>Local mode</strong></p>
-          <p>In local mode, everything stays on your device. URLs are processed locally to determine routing. Rules are stored in a JSON file on your machine. No data is transmitted to any server. No analytics, tracking, or third-party services are used.</p>
+          <p>autopilot operates in two modes. What data we handle depends on which mode you use.</p>
 
-          <p><strong>Cloud mode</strong></p>
-          <p>When you sign in with Google, we store your name, email address, and a unique account ID on our server. This is used solely for authentication and account management.</p>
-          <p>Your routing rules and browser profile names are stored on our server so they can sync across your browsers and devices. URLs are transmitted between your extension instances through our server when a link is routed to another browser or computer. We do not log, store, or analyze the URLs being routed.</p>
-          <p>If you subscribe to Premium, your billing is handled by Stripe. We store your Stripe customer ID and subscription status. We do not store your payment card details — Stripe handles that directly.</p>
+          <h3>Local mode</h3>
+          <p>In local mode, everything stays on your device. URLs are processed locally to determine routing. Rules are stored in a JSON file on your machine (<code>~/.local/share/autopilot/config.json</code>). No data is transmitted to any server. No analytics, tracking, or third-party services are used. We do not collect any personal data in local mode.</p>
 
-          <p><strong>What we don't do</strong></p>
-          <p>We do not sell your data. We do not use analytics or tracking. We do not share your information with third parties, except Stripe for payment processing and Google for authentication.</p>
+          <h3>Cloud mode</h3>
 
-          <p><strong>Data deletion</strong></p>
-          <p>You can delete your account and all associated data by signing out of the extension and contacting us via GitHub. In local mode, uninstalling the extension and running the uninstall script removes everything.</p>
+          <p><strong>Data we collect and why</strong></p>
+          <table style="width: 100%; border-collapse: collapse; margin: 12px 0 20px; font-size: 14px;">
+            <thead>
+              <tr style="text-align: left; border-bottom: 1px solid #3f3f46;">
+                <th style="padding: 8px 12px 8px 0;">Data</th>
+                <th style="padding: 8px 12px;">Purpose</th>
+                <th style="padding: 8px 0 8px 12px;">Legal basis (GDPR)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style="border-bottom: 1px solid #27272a;">
+                <td style="padding: 8px 12px 8px 0;">Name, email, Google account ID</td>
+                <td style="padding: 8px 12px;">Authentication and account management</td>
+                <td style="padding: 8px 0 8px 12px;">Contract necessity</td>
+              </tr>
+              <tr style="border-bottom: 1px solid #27272a;">
+                <td style="padding: 8px 12px 8px 0;">Browser profile names</td>
+                <td style="padding: 8px 12px;">Core feature: routing links to the right profile</td>
+                <td style="padding: 8px 0 8px 12px;">Contract necessity</td>
+              </tr>
+              <tr style="border-bottom: 1px solid #27272a;">
+                <td style="padding: 8px 12px 8px 0;">Routing rules (domains, keywords)</td>
+                <td style="padding: 8px 12px;">Core feature: syncing rules across browsers</td>
+                <td style="padding: 8px 0 8px 12px;">Contract necessity</td>
+              </tr>
+              <tr style="border-bottom: 1px solid #27272a;">
+                <td style="padding: 8px 12px 8px 0;">Stripe customer ID, subscription status</td>
+                <td style="padding: 8px 12px;">Payment processing and subscription management</td>
+                <td style="padding: 8px 0 8px 12px;">Contract necessity</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 12px 8px 0;">URLs (in transit only)</td>
+                <td style="padding: 8px 12px;">Real-time routing between browser instances</td>
+                <td style="padding: 8px 0 8px 12px;">Contract necessity</td>
+              </tr>
+            </tbody>
+          </table>
 
-          <p><strong>Questions</strong></p>
-          <p>If you have questions, open an issue on <a href="https://github.com/dantemoon1/autopilot" style="color: #818cf8">GitHub</a>.</p>
+          <p>URLs transmitted through our relay server for cross-browser routing are <strong>never logged, stored, or analyzed</strong>. They exist only in memory for the instant needed to deliver them to your other browser.</p>
+
+          <h3>Third-party services</h3>
+          <p>We use the following services to operate autopilot in cloud mode:</p>
+          <ul>
+            <li><strong>Google</strong> — authentication via Google OAuth. Subject to <a href="https://policies.google.com/privacy" style="color: #818cf8">Google's Privacy Policy</a>.</li>
+            <li><strong>Stripe</strong> — payment processing. We never see or store your card details. Subject to <a href="https://stripe.com/privacy" style="color: #818cf8">Stripe's Privacy Policy</a>.</li>
+            <li><strong>Fly.io</strong> — server hosting (United States). Subject to <a href="https://fly.io/legal/privacy-policy/" style="color: #818cf8">Fly.io's Privacy Policy</a>.</li>
+            <li><strong>Cloudflare</strong> — website hosting. Subject to <a href="https://www.cloudflare.com/privacypolicy/" style="color: #818cf8">Cloudflare's Privacy Policy</a>.</li>
+          </ul>
+          <p>We do not sell your data. We do not use analytics or tracking on our website or extension. We do not share your information with any parties beyond those listed above.</p>
+
+          <h3>International data transfers</h3>
+          <p>Our server is hosted in the United States via Fly.io. If you are located in the European Union or European Economic Area, your data is transferred to the US for processing. Our service providers (Fly.io, Stripe, Google) are certified under the EU-US Data Privacy Framework, which provides an adequate level of data protection as recognized by the European Commission.</p>
+
+          <h3>Data retention</h3>
+          <p>We keep your data for as long as your account exists. If you request account deletion, we delete all your data (account, profiles, rules, subscription records) within 30 days. Stripe may retain billing records independently as required by financial regulations.</p>
+
+          <h3>Cookies and tracking</h3>
+          <p>Our website does not use cookies or tracking technologies. The browser extension uses <code>chrome.storage</code> (local to your browser) to store session data — this is not a cookie and is not accessible to websites.</p>
+
+          <h3>Your rights</h3>
+          <p>Depending on your location, you may have the following rights regarding your personal data:</p>
+          <ul>
+            <li><strong>Access</strong> — request a copy of the data we hold about you</li>
+            <li><strong>Rectification</strong> — request correction of inaccurate data</li>
+            <li><strong>Erasure</strong> — request deletion of your account and all associated data</li>
+            <li><strong>Data portability</strong> — receive your data in a structured, machine-readable format</li>
+            <li><strong>Restriction</strong> — request that we limit processing of your data</li>
+            <li><strong>Objection</strong> — object to processing of your data</li>
+            <li><strong>Withdraw consent</strong> — where processing is based on consent, withdraw it at any time</li>
+          </ul>
+          <p>To exercise any of these rights, email us at <a href="mailto:dante142@gmail.com?subject=%5Bautopilot%5D%20Privacy%20request" style="color: #818cf8">dante142@gmail.com</a>. We will respond within 30 days.</p>
+          <p>If you believe your data protection rights have been violated, you have the right to lodge a complaint with your local data protection supervisory authority.</p>
+
+          <h3>Children</h3>
+          <p>autopilot is not directed at children under 16. We do not knowingly collect personal data from anyone under 16. If you believe a child under 16 has provided us with personal data, please contact us and we will delete it.</p>
+
+          <h3>Automated decision-making</h3>
+          <p>We do not use automated decision-making or profiling.</p>
+
+          <h3>Changes to this policy</h3>
+          <p>We may update this policy from time to time. The "last updated" date at the top will reflect the most recent revision. Continued use of autopilot after changes constitutes acceptance of the updated policy.</p>
+
+          <h3>Contact</h3>
+          <p>For any privacy-related questions or requests:<br>
+          Email: <a href="mailto:dante142@gmail.com?subject=%5Bautopilot%5D%20Privacy%20question" style="color: #818cf8">dante142@gmail.com</a><br>
+          GitHub: <a href="https://github.com/dantemoon1/autopilot" style="color: #818cf8">github.com/dantemoon1/autopilot</a></p>
         </div>
       </section>
 
@@ -46,7 +124,8 @@
         <div class="footer-links">
           <a href="https://github.com/dantemoon1/autopilot">GitHub</a>
           <a href="uninstall.html">Uninstall</a>
-          <a href="privacy.html">Privacy Policy</a>
+          <a href="privacy.html">Privacy</a>
+          <a href="terms.html">Terms</a>
         </div>
       </footer>
     </div>
