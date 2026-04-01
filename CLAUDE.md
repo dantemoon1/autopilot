@@ -13,8 +13,9 @@ There is a companion **private repo** (`autopilot-server`) at `~/.superset/proje
 ```
 packages/
   extension/     Chrome extension (MV3, service worker)
+    store/       Chrome Web Store assets (screenshots, promo images, zip)
   native-host/   Python native messaging host (local mode)
-  website/       GitHub Pages site (dantemoon1.github.io/autopilot)
+  website/       Cloudflare Pages site (autopilotapp.co)
 install.sh       Local installer (dev)
 uninstall.sh     Uninstaller
 ```
@@ -26,18 +27,19 @@ uninstall.sh     Uninstaller
 
 ## Key files
 
-- `extension/background.js` — service worker, handles both modes, OAuth, WebSocket relay, navigation interception
+- `extension/background.js` — service worker, handles both modes, OAuth, WebSocket relay, navigation interception, context menu
 - `extension/config.js` — server URLs (switch between localhost and production here)
 - `extension/popup.js` — UI logic, custom dropdowns, mode switching
-- `extension/offscreen.js` — holds WebSocket connection alive (MV3 service workers sleep)
+- `extension/offscreen.js` — holds WebSocket connection alive, waits for server route acknowledgment before confirming delivery
 - `native-host/host.py` — native messaging bridge, has `HOST_VERSION` that must match `EXPECTED_HOST_VERSION` in background.js
 
 ## Conventions
 
 - Browser icons are base64 PNGs extracted from macOS app bundles, not SVGs
 - `parseSvg()` in popup.js uses `insertAdjacentHTML` (not DOMParser) for correct SVG namespace
-- The extension ID is pinned via the `key` field in manifest.json: `eifgnohgbaefkgpgiipagieecnfjkome`
+- Chrome Web Store extension ID: `cojhoeoiabkniahpnhobifbgpicfabpg`
 - External messaging from website pages uses `chrome.runtime.sendMessage(EXTENSION_ID, ...)` — requires `externally_connectable` in manifest
+- The extension ID must match in three places: `auth-callback.html`, `subscribe-success.html`, and server `ALLOWED_ORIGINS`
 
 ## Server API (for reference)
 
@@ -45,6 +47,7 @@ uninstall.sh     Uninstaller
 POST /auth/google          — exchange Google ID token for session JWT
 GET  /profiles             — list user's profiles
 POST /profiles             — create profile
+PATCH /profiles/:id        — rename profile
 DELETE /profiles/:id       — delete profile
 GET  /rules                — list user's rules
 POST /rules                — create rule (1 free, up to 100 premium)
@@ -53,13 +56,26 @@ GET  /subscription         — check subscription status
 POST /checkout             — create Stripe checkout session
 POST /billing              — create Stripe billing portal session
 POST /webhooks/stripe      — Stripe webhook (signature-verified)
-WebSocket /                — relay for real-time URL routing
+WebSocket /                — relay for real-time URL routing (sends "routed" ack on success)
 ```
+
+## Deployment
+
+- **Website**: Cloudflare Pages, auto-deploys from `packages/website/` on push to main
+- **Server**: Fly.io, deploy manually with `cd ~/.superset/projects/autopilot-server && fly deploy`
+- **Extension**: Upload `packages/extension/store/autopilot-extension.zip` to Chrome Web Store developer dashboard
+
+## Releases
+
+- Tag releases with `git tag vX.Y.Z && git push origin vX.Y.Z`
+- Create GitHub release with `gh release create vX.Y.Z` and attach the extension zip
+- Bump version in `manifest.json` before creating a new zip
 
 ## Git workflow
 
 - Push directly to `main` — this is a public extension repo, no PR required
 - The companion server repo uses PRs for code review before merging
+- When changing WebSocket message types or API contracts, update both repos and deploy server first
 
 ## Testing
 
