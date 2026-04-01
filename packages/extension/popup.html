@@ -48,6 +48,7 @@
           <span class="plan-price">$49</span>
           <span class="plan-detail">one-time, forever</span>
         </button>
+        <a href="#" id="upgrade-back-link" class="setup-local-link" style="margin-top: 10px; display: block;">Back</a>
       </div>
 
       <div id="pick-profile-screen" hidden>
@@ -61,6 +62,16 @@
         <p class="setup-text">Name this browser profile:</p>
         <div class="form-row">
           <input type="text" id="profile-name-input" placeholder="Work Chrome, Personal, etc." />
+        </div>
+        <div class="form-row form-row-inline">
+          <label class="form-label">Browser:</label>
+          <select id="profile-browser-select">
+            <option value="chrome">Chrome</option>
+            <option value="brave">Brave</option>
+            <option value="edge">Edge</option>
+            <option value="arc">Arc</option>
+            <option value="helium">Helium</option>
+          </select>
         </div>
         <div class="form-row">
           <button id="register-btn" class="btn-primary">Create Profile</button>

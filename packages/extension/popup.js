@@ -377,14 +377,7 @@ document.getElementById("sign-in-btn").addEventListener("click", async () => {
 document.getElementById("local-mode-link").addEventListener("click", async (e) => {
   e.preventDefault();
   await chrome.storage.local.set({ mode: "local" });
-  // If helper is already installed, go straight to rules UI
-  const hostCheck = await chrome.runtime.sendMessage({ action: "check_native_host" });
-  if (hostCheck.installed) {
-    init();
-  } else {
-    document.getElementById("setup-screen").hidden = true;
-    document.getElementById("local-setup-screen").hidden = false;
-  }
+  location.reload();
 });
 
 document.getElementById("back-to-signin").addEventListener("click", (e) => {
@@ -409,6 +402,12 @@ document.getElementById("subscribe-lifetime-btn").addEventListener("click", () =
   chrome.runtime.sendMessage({ action: "checkout", plan: "lifetime" });
 });
 
+document.getElementById("upgrade-back-link").addEventListener("click", (e) => {
+  e.preventDefault();
+  document.getElementById("upgrade-screen").hidden = true;
+  mainUI.hidden = false;
+});
+
 document.getElementById("billing-link").addEventListener("click", (e) => {
   e.preventDefault();
   chrome.runtime.sendMessage({ action: "billing" });
@@ -429,8 +428,10 @@ document.getElementById("switch-mode-link").addEventListener("click", async (e) 
 });
 
 
-document.getElementById("new-profile-btn").addEventListener("click", () => {
+document.getElementById("new-profile-btn").addEventListener("click", async () => {
   document.getElementById("pick-profile-screen").hidden = true;
+  const detected = await detectBrowser();
+  document.getElementById("profile-browser-select").value = detected;
   registerScreen.hidden = false;
 });
 
@@ -440,7 +441,7 @@ document.getElementById("register-btn").addEventListener("click", async () => {
 
   // Check if this name is already used by another profile
   const existing = await chrome.runtime.sendMessage({ action: "list_profiles" });
-  const browser = await detectBrowser();
+  const browser = document.getElementById("profile-browser-select").value;
   if (existing.profiles?.some((p) => p.name === name && p.browser === browser)) {
     showStatus("That name is already used. Try a unique name like 'Work Chrome' or 'Home Helium'.");
     return;
@@ -457,10 +458,21 @@ document.getElementById("register-btn").addEventListener("click", async () => {
     return;
   }
 
-  init();
+  location.reload();
 });
 
-showFormBtn.addEventListener("click", () => {
+showFormBtn.addEventListener("click", async () => {
+  if (currentMode === "paid") {
+    const subRes = await chrome.runtime.sendMessage({ action: "check_subscription" });
+    if (!subRes.active) {
+      const rules = await loadRules();
+      if (rules.length >= 1) {
+        mainUI.hidden = true;
+        document.getElementById("upgrade-screen").hidden = false;
+        return;
+      }
+    }
+  }
   showFormBtn.hidden = true;
   addRuleForm.hidden = false;
 });
@@ -672,6 +684,8 @@ async function init() {
       if (existingProfiles.length > 0) {
         showProfilePicker(existingProfiles);
       } else {
+        const detected = await detectBrowser();
+        document.getElementById("profile-browser-select").value = detected;
         registerScreen.hidden = false;
       }
       return;
@@ -693,6 +707,21 @@ async function init() {
 
     // Show profile name with icon
     const myProfile = profiles.find((p) => p.id === modeInfo.paidProfileId);
+    if (!myProfile) {
+      // Stored profile no longer exists — re-pick
+      await chrome.storage.local.remove(["paidProfileId"]);
+      modeInfo.paidProfileId = null;
+      if (profiles.length > 0) {
+        mainUI.hidden = true;
+        showProfilePicker(profiles);
+      } else {
+        mainUI.hidden = true;
+        const detected = await detectBrowser();
+        document.getElementById("profile-browser-select").value = detected;
+        registerScreen.hidden = false;
+      }
+      return;
+    }
     if (myProfile) {
       if (myProfile.browser) {
         const icon = browserIcon(myProfile.browser);

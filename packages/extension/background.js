@@ -171,13 +171,19 @@ async function connectRelay() {
   const { paidProfileId } = await chrome.storage.local.get("paidProfileId");
   if (!token || !paidProfileId) return;
   await ensureOffscreen();
-  chrome.runtime.sendMessage({
-    target: "offscreen",
-    type: "connect",
-    url: WS_URL,
-    token,
-    profileId: paidProfileId,
-  });
+  // Small delay to ensure offscreen document's listener is ready
+  await new Promise((r) => setTimeout(r, 200));
+  try {
+    await chrome.runtime.sendMessage({
+      target: "offscreen",
+      type: "connect",
+      url: WS_URL,
+      token,
+      profileId: paidProfileId,
+    });
+  } catch (err) {
+    console.warn("autopilot: connectRelay failed:", err.message);
+  }
 }
 
 async function disconnectRelay() {
