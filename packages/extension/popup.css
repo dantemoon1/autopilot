@@ -440,6 +440,19 @@ input[type="text"]:focus {
   margin-top: 6px;
 }
 
+.setup-tip {
+  color: #52525b;
+  font-size: 10px;
+  text-align: center;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #1c1c21;
+}
+.setup-tip a {
+  color: #818cf8;
+  text-decoration: none;
+}
+
 .setup-divider {
   display: flex;
   align-items: center;

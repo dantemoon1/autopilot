@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FAQ — autopilot</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="page">
+      <nav>
+        <a href="./" class="nav-logo">autopilot</a>
+        <div class="nav-links">
+          <a href="./">Home</a>
+          <a href="privacy.html">Privacy</a>
+          <a href="terms.html">Terms</a>
+        </div>
+      </nav>
+
+      <section class="section" style="border-top: none; padding-top: 48px;">
+        <h2>FAQ</h2>
+        <div class="prose">
+
+          <h3>Why didn't my link route to the other browser?</h3>
+          <p>The target browser must be open with the extension installed. autopilot can't launch a closed browser. If you're using cloud mode, both browser instances need to be signed in and running.</p>
+
+          <h3>Do both browsers need to be open?</h3>
+          <p>Yes. autopilot routes links between running browsers. If the target browser isn't open, the link stays where you are and nothing is lost.</p>
+
+          <h3>What's the difference between cloud mode and local mode?</h3>
+          <p><strong>Cloud mode</strong> — sign in with Google. Rules sync across browsers and computers. Works anywhere with an internet connection. Free tier includes 1 rule, premium unlocks more.</p>
+          <p><strong>Local mode</strong> — install a small helper via Terminal. Rules are stored on your machine. Unlimited rules, no account needed, fully offline. macOS only.</p>
+
+          <h3>Can I route links across computers?</h3>
+          <p>Yes, with cloud mode. Sign in on both computers with the same Google account. When a link matches a rule, it opens on whatever computer has the target profile running. Requires premium.</p>
+
+          <h3>What happens when I hit the free rule limit?</h3>
+          <p>Your existing rules are saved. Only your most recent rule will be active until you upgrade. You won't lose anything.</p>
+
+          <h3>Does autopilot work on Windows or Linux?</h3>
+          <p>Cloud mode works on any platform that runs a Chromium browser. Local mode (the native helper) is macOS only for now.</p>
+
+          <h3>Does autopilot track my browsing?</h3>
+          <p>No. URLs are checked against your rules locally in the extension. In cloud mode, matched URLs are relayed through our server to the target browser but are never logged, stored, or analyzed. See our <a href="privacy.html" style="color: #818cf8">privacy policy</a> for details.</p>
+
+          <h3>What browsers are supported?</h3>
+          <p>Chrome, Brave, Edge, Arc, and Helium. You can route links between any combination. More browsers coming soon.</p>
+
+          <h3>Can I use domain rules and keyword rules together?</h3>
+          <p>Yes. Domain rules match exact domains (with optional subdomains). Keyword rules match if the text appears anywhere in the URL. You can mix both types.</p>
+
+          <h3>How do I uninstall?</h3>
+          <p>See our <a href="uninstall.html" style="color: #818cf8">uninstall guide</a>.</p>
+
+          <h3>Something else?</h3>
+          <p>Open an issue on <a href="https://github.com/dantemoon1/autopilot/issues" style="color: #818cf8">GitHub</a> or email <a href="mailto:dante142@gmail.com?subject=%5Bautopilot%5D%20Question" style="color: #818cf8">dante142@gmail.com</a>.</p>
+
+        </div>
+      </section>
+
+      <footer>
+        <span class="footer-logo">autopilot</span>
+        <div class="footer-links">
+          <a href="https://github.com/dantemoon1/autopilot">GitHub</a>
+          <a href="uninstall.html">Uninstall</a>
+          <a href="privacy.html">Privacy</a>
+          <a href="terms.html">Terms</a>
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>
