@@ -36,11 +36,6 @@ if [ -f "$INSTALL_DIR/host.py" ]; then
   echo "Removed: $INSTALL_DIR/host.py"
 fi
 
-if [ -f "$INSTALL_DIR/uninstall.sh" ]; then
-  rm "$INSTALL_DIR/uninstall.sh"
-  echo "Removed: $INSTALL_DIR/uninstall.sh"
-fi
-
 echo ""
 
 if [ "$PURGE" = true ]; then
@@ -48,18 +43,19 @@ if [ "$PURGE" = true ]; then
     rm "$INSTALL_DIR/config.json"
     echo "Removed: $INSTALL_DIR/config.json"
   fi
-
-  if [ -d "$INSTALL_DIR" ]; then
-    rmdir "$INSTALL_DIR" 2>/dev/null || true
-  fi
   echo ""
   echo "Native helper and saved rules removed."
 else
-  if [ -d "$INSTALL_DIR" ]; then
-    rmdir "$INSTALL_DIR" 2>/dev/null || true
-  fi
   echo "Native helper removed. Rules kept at: $INSTALL_DIR/config.json"
   echo "Run with --purge to remove saved rules too."
+fi
+
+# Remove uninstall script last, then clean up directory
+if [ -f "$INSTALL_DIR/uninstall.sh" ]; then
+  rm "$INSTALL_DIR/uninstall.sh"
+fi
+if [ -d "$INSTALL_DIR" ]; then
+  rmdir "$INSTALL_DIR" 2>/dev/null || true
 fi
 
 echo ""
