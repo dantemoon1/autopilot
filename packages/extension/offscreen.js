@@ -6,6 +6,7 @@ let reconnectTimer = null;
 let currentUrl = null;
 let currentToken = null;
 let currentProfileId = null;
+let pendingRouteCallback = null;
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.target !== "offscreen") return false;
@@ -34,11 +35,20 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
           targetProfileId: msg.targetProfileId,
         })
       );
-      sendResponse({ ok: true });
+      const timeout = setTimeout(() => {
+        pendingRouteCallback = null;
+        sendResponse({ error: "Timeout" });
+      }, 5000);
+      pendingRouteCallback = (result) => {
+        clearTimeout(timeout);
+        pendingRouteCallback = null;
+        sendResponse(result);
+      };
     } else {
       sendResponse({ error: "Not connected" });
+      return false;
     }
-    return false;
+    return true;
   }
 
   return false;
@@ -72,6 +82,10 @@ function connect() {
       });
     }
 
+    if (msg.type === "routed") {
+      if (pendingRouteCallback) pendingRouteCallback({ ok: true });
+    }
+
     if (msg.type === "open") {
       chrome.runtime.sendMessage({
         source: "offscreen",
@@ -81,6 +95,7 @@ function connect() {
     }
 
     if (msg.type === "error") {
+      if (pendingRouteCallback) pendingRouteCallback({ error: msg.error });
       chrome.runtime.sendMessage({
         source: "offscreen",
         type: "ws-error",
