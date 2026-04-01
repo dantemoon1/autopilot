@@ -122,6 +122,7 @@ async function handleOAuthCallback(message, sender) {
       user: data.user,
     });
 
+    buildContextMenu();
     if (sender.tab?.id) chrome.tabs.remove(sender.tab.id);
     return { success: true };
   } catch (err) {
@@ -456,6 +457,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       try {
         if (mode === "paid") {
           const { profiles } = await serverFetch("/profiles");
+          buildContextMenu();
           sendResponse({ profiles });
         } else {
           const response = await listProfilesFree();
@@ -543,7 +545,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       method: "PATCH",
       body: JSON.stringify({ name: message.name }),
     })
-      .then(() => sendResponse({ success: true }))
+      .then(() => { buildContextMenu(); sendResponse({ success: true }); })
       .catch((err) => sendResponse({ error: err.message }));
     return true;
   }
