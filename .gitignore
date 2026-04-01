@@ -1,3 +1,5 @@
 node_modules/
 .DS_Store
 *.pem
+CLAUDE.md
+AGENTS.md
