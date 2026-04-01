@@ -28,6 +28,25 @@ body {
   letter-spacing: -0.3px;
 }
 
+.mode-badge {
+  font-size: 9px;
+  font-weight: 500;
+  padding: 1px 5px;
+  border-radius: 3px;
+  letter-spacing: 0.3px;
+  vertical-align: middle;
+}
+
+.mode-badge--cloud {
+  color: #818cf8;
+  background: rgba(99, 102, 241, 0.1);
+}
+
+.mode-badge--local {
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.1);
+}
+
 .title-sign-out {
   font-size: 10px;
   color: #3f3f46;
@@ -521,6 +540,70 @@ input[type="text"]:focus {
   text-transform: uppercase;
 }
 
+.btn-pick-profile {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  background: #1c1c21;
+  border: 1px solid #27272a;
+  border-radius: 6px;
+  color: #fafafa;
+  font-family: "SF Mono", "Menlo", "Consolas", monospace;
+  font-size: 12px;
+  padding: 9px 12px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.btn-pick-profile:hover {
+  background: #27272a;
+  border-color: #3f3f46;
+}
+
+.btn-pick-profile--active {
+  border-color: #6366f1;
+}
+
+.pick-profile-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pick-profile-row .btn-pick-profile {
+  flex: 1;
+}
+
+.btn-edit-profile {
+  background: none;
+  border: none;
+  color: #3f3f46;
+  font-family: "SF Mono", "Menlo", "Consolas", monospace;
+  font-size: 10px;
+  cursor: pointer;
+  padding: 4px;
+  transition: color 0.15s;
+}
+
+.btn-edit-profile:hover {
+  color: #71717a;
+}
+
+.btn-delete-profile:hover {
+  color: #ef4444;
+}
+
+input.edit-profile-input {
+  flex: 1;
+  color: #fafafa;
+  font-family: "SF Mono", "Menlo", "Consolas", monospace;
+  font-size: 12px;
+  outline: none;
+  caret-color: #6366f1;
+}
+
 .setup-local-link {
   display: block;
   text-align: center;
@@ -594,7 +677,8 @@ input[type="text"]:focus {
   white-space: nowrap;
 }
 
-#copy-cmd-btn {
+#copy-cmd-btn,
+#copy-update-btn {
   background: #27272a;
   border: 1px solid #3f3f46;
   border-radius: 3px;
@@ -605,9 +689,11 @@ input[type="text"]:focus {
   cursor: pointer;
   flex-shrink: 0;
   transition: all 0.15s;
+  outline: none;
 }
 
-#copy-cmd-btn:hover {
+#copy-cmd-btn:hover,
+#copy-update-btn:hover {
   background: #3f3f46;
   color: #fafafa;
 }

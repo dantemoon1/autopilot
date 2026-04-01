@@ -54,6 +54,7 @@ async function serverFetch(path, options = {}) {
       Authorization: `Bearer ${token}`,
       ...options.headers,
     },
+    cache: "no-store",
   });
   if (res.status === 401) {
     await chrome.storage.local.remove(["mode", "authToken", "user", "paidProfileId"]);
@@ -519,6 +520,23 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.action === "delete_rule_paid") {
     serverFetch(`/rules/${message.ruleId}`, { method: "DELETE" })
       .then(() => { invalidateRulesCache(); sendResponse({ success: true }); })
+      .catch((err) => sendResponse({ error: err.message }));
+    return true;
+  }
+
+  if (message.action === "rename_profile") {
+    serverFetch(`/profiles/${message.profileId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ name: message.name }),
+    })
+      .then(() => sendResponse({ success: true }))
+      .catch((err) => sendResponse({ error: err.message }));
+    return true;
+  }
+
+  if (message.action === "delete_profile") {
+    serverFetch(`/profiles/${message.profileId}`, { method: "DELETE" })
+      .then(() => { buildContextMenu(); sendResponse({ success: true }); })
       .catch((err) => sendResponse({ error: err.message }));
     return true;
   }

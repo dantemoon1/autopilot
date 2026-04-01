@@ -258,6 +258,48 @@ nav {
   border-radius: 3px;
 }
 
+/* Supported browsers */
+.browser-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.browser-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  color: #71717a;
+}
+
+.browser-item img {
+  width: 14px;
+  height: 14px;
+}
+
+.browser-sep {
+  color: #3f3f46;
+  font-size: 11px;
+}
+
+.browser-coming-soon {
+  font-size: 11px;
+  color: #3f3f46;
+  margin-top: 10px;
+}
+
+.browser-coming-soon a {
+  color: #52525b;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.browser-coming-soon a:hover {
+  color: #a1a1aa;
+}
+
 /* Pricing */
 .pricing-grid {
   display: grid;

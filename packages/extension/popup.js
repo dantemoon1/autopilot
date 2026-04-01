@@ -211,6 +211,105 @@ class ProfileSelect {
   }
 }
 
+function showProfilePicker(profilesList, currentId) {
+  const pickList = document.getElementById("pick-profile-list");
+  pickList.replaceChildren();
+  for (const p of profilesList) {
+    const row = document.createElement("div");
+    row.className = "pick-profile-row";
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "btn-pick-profile";
+    if (p.id === currentId) btn.classList.add("btn-pick-profile--active");
+    if (p.browser) btn.appendChild(browserIcon(p.browser));
+    btn.appendChild(document.createTextNode(p.name));
+    btn.addEventListener("click", async () => {
+      await chrome.storage.local.set({ paidProfileId: p.id });
+      init();
+    });
+
+    let editing = false;
+    let editInput = null;
+
+    const editBtn = document.createElement("button");
+    editBtn.type = "button";
+    editBtn.className = "btn-edit-profile";
+    editBtn.textContent = "edit";
+    editBtn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+
+      if (!editing) {
+        // Switch to edit mode
+        editing = true;
+        editInput = document.createElement("input");
+        editInput.type = "text";
+        editInput.className = "btn-pick-profile edit-profile-input";
+        editInput.value = p.name;
+        btn.replaceWith(editInput);
+        editInput.focus();
+        editInput.select();
+        editBtn.textContent = "save";
+
+        editInput.addEventListener("keydown", (ev) => {
+          if (ev.key === "Enter") editBtn.click();
+          if (ev.key === "Escape") init();
+        });
+      } else {
+        // Save
+        const newName = editInput.value.trim();
+        if (!newName || newName === p.name) { init(); return; }
+        const result = await chrome.runtime.sendMessage({
+          action: "rename_profile",
+          profileId: p.id,
+          name: newName,
+        });
+        if (result?.error) { showStatus(result.error); return; }
+        location.reload();
+      }
+    });
+
+    const deleteBtn = document.createElement("button");
+    deleteBtn.type = "button";
+    deleteBtn.className = "btn-edit-profile btn-delete-profile";
+    deleteBtn.textContent = "delete";
+    deleteBtn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const result = await chrome.runtime.sendMessage({
+        action: "delete_profile",
+        profileId: p.id,
+      });
+      if (result?.error) { showStatus(result.error); return; }
+      // If we deleted the active profile, clear it
+      if (p.id === currentId) {
+        await chrome.storage.local.remove(["paidProfileId"]);
+      }
+      init();
+    });
+
+    row.appendChild(btn);
+    row.appendChild(editBtn);
+    row.appendChild(deleteBtn);
+    pickList.appendChild(row);
+  }
+  document.getElementById("pick-profile-screen").hidden = false;
+}
+
+function setModeBadge(mode) {
+  const badge = document.getElementById("mode-badge");
+  if (mode === "paid") {
+    badge.textContent = "cloud";
+    badge.className = "mode-badge mode-badge--cloud";
+    badge.hidden = false;
+  } else if (mode === "local") {
+    badge.textContent = "local";
+    badge.className = "mode-badge mode-badge--local";
+    badge.hidden = false;
+  } else {
+    badge.hidden = true;
+  }
+}
+
 // ── DOM refs ──
 
 const setupScreen = document.getElementById("setup-screen");
@@ -244,14 +343,21 @@ const newProfileSelect = new ProfileSelect(
 
 // ── Events ──
 
-document.getElementById("copy-cmd-btn").addEventListener("click", async () => {
-  const cmd = document.getElementById("install-command").textContent;
-  await navigator.clipboard.writeText(cmd);
-  const btn = document.getElementById("copy-cmd-btn");
-  const originalNodes = Array.from(btn.childNodes).map((n) => n.cloneNode(true));
-  btn.textContent = "\u2713";
-  setTimeout(() => { btn.replaceChildren(...originalNodes); }, 1500);
-});
+function setupCopyButton(btnId, codeEl) {
+  document.getElementById(btnId).addEventListener("click", async () => {
+    const code = typeof codeEl === "string"
+      ? document.getElementById(codeEl).textContent
+      : codeEl().textContent;
+    await navigator.clipboard.writeText(code);
+    const btn = document.getElementById(btnId);
+    const originalNodes = Array.from(btn.childNodes).map((n) => n.cloneNode(true));
+    btn.textContent = "\u2713";
+    setTimeout(() => { btn.replaceChildren(...originalNodes); }, 1500);
+  });
+}
+
+setupCopyButton("copy-cmd-btn", "install-command");
+setupCopyButton("copy-update-btn", () => document.querySelector("#update-banner code"));
 
 document.getElementById("sign-in-btn").addEventListener("click", async () => {
   const btn = document.getElementById("sign-in-btn");
@@ -310,15 +416,22 @@ document.getElementById("billing-link").addEventListener("click", (e) => {
 document.getElementById("sign-out-link").addEventListener("click", async (e) => {
   e.preventDefault();
   await chrome.runtime.sendMessage({ action: "sign_out" });
+  showStatus("Switch mode in your other browsers too.");
   init();
 });
 
 document.getElementById("switch-mode-link").addEventListener("click", async (e) => {
   e.preventDefault();
   await chrome.storage.local.remove(["mode", "currentProfile", "authToken", "user", "paidProfileId"]);
+  showStatus("Switch mode in your other browsers too.");
   init();
 });
 
+
+document.getElementById("new-profile-btn").addEventListener("click", () => {
+  document.getElementById("pick-profile-screen").hidden = true;
+  registerScreen.hidden = false;
+});
 
 document.getElementById("register-btn").addEventListener("click", async () => {
   const name = document.getElementById("profile-name-input").value.trim();
@@ -525,6 +638,7 @@ async function init() {
   setupScreen.hidden = true;
   document.getElementById("local-setup-screen").hidden = true;
   document.getElementById("upgrade-screen").hidden = true;
+  document.getElementById("pick-profile-screen").hidden = true;
   document.getElementById("update-banner").hidden = true;
   document.getElementById("billing-link").hidden = true;
   document.getElementById("sign-out-link").hidden = true;
@@ -536,6 +650,8 @@ async function init() {
 
   const modeInfo = await chrome.runtime.sendMessage({ action: "get_mode" });
   currentMode = modeInfo.mode;
+
+  setModeBadge(currentMode);
 
   if (currentMode === "paid") {
 
@@ -549,7 +665,14 @@ async function init() {
 
     // Check if profile is registered
     if (!modeInfo.paidProfileId) {
-      registerScreen.hidden = false;
+      const existing = await chrome.runtime.sendMessage({ action: "list_profiles" });
+      const existingProfiles = existing.profiles || [];
+
+      if (existingProfiles.length > 0) {
+        showProfilePicker(existingProfiles);
+      } else {
+        registerScreen.hidden = false;
+      }
       return;
     }
 
@@ -576,7 +699,16 @@ async function init() {
         currentProfileSelect._triggerIcon = icon;
       }
       currentProfileSelect._triggerText.textContent = myProfile.name;
-      currentProfileSelect.trigger.disabled = true;
+      // Replace the trigger with a clone to remove the dropdown toggle handler
+      const newTrigger = currentProfileSelect.trigger.cloneNode(true);
+      currentProfileSelect.trigger.replaceWith(newTrigger);
+      currentProfileSelect.trigger = newTrigger;
+      newTrigger.disabled = false;
+      newTrigger.addEventListener("click", (e) => {
+        e.stopPropagation();
+        mainUI.hidden = true;
+        showProfilePicker(profiles, modeInfo.paidProfileId);
+      });
     }
 
     document.getElementById("sign-out-link").hidden = false;

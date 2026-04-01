@@ -7,7 +7,7 @@
   <body>
     <div id="app">
       <div id="title-bar">
-        <h1 id="title">autopilot</h1>
+        <h1 id="title">autopilot <span id="mode-badge" class="mode-badge" hidden></span></h1>
         <a href="#" id="sign-out-link" class="title-sign-out" hidden>sign out</a>
         <a href="#" id="switch-mode-link" class="title-sign-out" hidden>sign in</a>
       </div>
@@ -50,6 +50,13 @@
         </button>
       </div>
 
+      <div id="pick-profile-screen" hidden>
+        <p class="setup-text">Select this browser's profile:</p>
+        <div id="pick-profile-list"></div>
+        <div class="setup-divider"><span>or</span></div>
+        <button id="new-profile-btn" class="btn-primary">Create New Profile</button>
+      </div>
+
       <div id="register-screen" hidden>
         <p class="setup-text">Name this browser profile:</p>
         <div class="form-row">
@@ -61,7 +68,11 @@
       </div>
 
       <div id="update-banner" class="update-banner" hidden>
-        Helper update available. Run: <code>curl -fsSL https://autopilotapp.co/install | bash</code>
+        <span>Helper update available:</span>
+        <div class="install-cmd">
+          <code>curl -fsSL https://autopilotapp.co/install | bash</code>
+          <button id="copy-update-btn" title="Copy"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+        </div>
       </div>
 
       <div id="main-ui" hidden>
