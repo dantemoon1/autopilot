@@ -77,8 +77,20 @@ WebSocket /                — relay for real-time URL routing (sends "routed" a
 - The companion server repo uses PRs for code review before merging
 - When changing WebSocket message types or API contracts, update both repos and deploy server first
 
-## Testing
+## Local development
 
-- Local dev: set `config.js` to `localhost:8080`, run server with `npm run dev`
-- Production: set `config.js` to `https://autopilot-relay.fly.dev`
-- Run `bash install.sh` to install the native helper for local mode testing
+1. Set `config.js` to localhost:
+   ```js
+   const API_URL = "http://localhost:8080";
+   const WS_URL = "ws://localhost:8080";
+   ```
+2. Load unpacked extension from `packages/extension/` — the `key` field in manifest.json pins the dev ID to `eifgnohgbaefkgpgiipagieecnfjkome`
+3. Run the server: `cd ~/.superset/projects/autopilot-server && npm run dev`
+   - The `.env` has `DEV_EXTENSION_ID` set so CORS accepts the dev extension
+4. Run `bash install.sh` to install the native helper for local mode testing
+
+## Building for Chrome Web Store
+
+Run `bash build.sh` — strips the `key` field from manifest.json and creates `packages/extension/store/autopilot-extension.zip`. Do NOT manually zip with the key included — the store rejects it.
+
+Remember to flip `config.js` back to production URLs before building.
