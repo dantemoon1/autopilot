@@ -226,6 +226,7 @@ function showProfilePicker(profilesList, currentId) {
     btn.appendChild(document.createTextNode(p.name));
     btn.addEventListener("click", async () => {
       await chrome.storage.local.set({ paidProfileId: p.id });
+      await chrome.runtime.sendMessage({ action: "reconnect_relay" });
       init();
     });
 

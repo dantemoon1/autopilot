@@ -18,15 +18,30 @@
 
       <section class="section" style="border-top: none; padding-top: 48px;">
         <h2>Uninstall</h2>
-        <p class="section-sub">Removing the extension stops routing. If you also want to remove the local helper, run this in Terminal:</p>
+        <div class="prose">
+          <p><strong>Cloud mode</strong></p>
+          <p>Remove the extension from your browser's extensions page. Your account and rules stay on the server — if you reinstall later, everything is still there. To delete your account and data, sign out from the extension and contact us via <a href="mailto:dante142@gmail.com?subject=%5Bautopilot%5D%20Account%20deletion" style="color: #818cf8">email</a>.</p>
+
+          <p><strong>Local mode</strong></p>
+          <p>Remove the extension, then run this in Terminal to remove the local helper:</p>
+        </div>
         <div class="install-block">
           <code id="uninstall-command">bash ~/.local/share/autopilot/uninstall.sh</code>
           <button id="copy-btn" title="Copy">
             <svg id="copy-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
           </button>
         </div>
-        <p class="install-note">This keeps your saved rules by default. Use <code>bash ~/.local/share/autopilot/uninstall.sh --purge</code> to remove them too.</p>
-        <p class="install-note">If that file is missing, you can simply leave the helper installed or reinstall the extension and run setup again later.</p>
+        <p class="install-note">This keeps your saved rules by default. Add <code>--purge</code> to remove them too.</p>
+
+        <div style="margin-top: 32px;">
+          <p style="font-size: 13px; color: #a1a1aa; margin-bottom: 12px;">Sorry to see you go. Mind sharing why?</p>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+            <a href="mailto:dante142@gmail.com?subject=%5Bautopilot%5D%20Uninstall%20feedback&body=Reason%3A%20Didn't%20need%20it" class="btn btn-secondary" style="font-size: 12px; padding: 6px 14px;">Didn't need it</a>
+            <a href="mailto:dante142@gmail.com?subject=%5Bautopilot%5D%20Uninstall%20feedback&body=Reason%3A%20Too%20complicated" class="btn btn-secondary" style="font-size: 12px; padding: 6px 14px;">Too complicated</a>
+            <a href="mailto:dante142@gmail.com?subject=%5Bautopilot%5D%20Uninstall%20feedback&body=Reason%3A%20Found%20something%20better" class="btn btn-secondary" style="font-size: 12px; padding: 6px 14px;">Found something better</a>
+            <a href="mailto:dante142@gmail.com?subject=%5Bautopilot%5D%20Uninstall%20feedback&body=Reason%3A%20" class="btn btn-secondary" style="font-size: 12px; padding: 6px 14px;">Other</a>
+          </div>
+        </div>
       </section>
 
       <footer>

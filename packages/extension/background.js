@@ -58,6 +58,7 @@ async function serverFetch(path, options = {}) {
   });
   if (res.status === 401) {
     await chrome.storage.local.remove(["mode", "authToken", "user", "paidProfileId"]);
+    disconnectRelay();
     throw new Error("Session expired");
   }
   if (!res.ok) throw new Error(`Server error: ${res.status}`);
@@ -68,16 +69,15 @@ async function serverFetch(path, options = {}) {
 
 const AUTH_CALLBACK_URL = "https://autopilotapp.co/auth-callback.html";
 
-let pendingNonce = null;
-
 async function signIn() {
-  pendingNonce = crypto.randomUUID();
+  const nonce = crypto.randomUUID();
+  await chrome.storage.session.set({ pendingNonce: nonce });
   const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
   authUrl.searchParams.set("client_id", GOOGLE_CLIENT_ID);
   authUrl.searchParams.set("redirect_uri", AUTH_CALLBACK_URL);
   authUrl.searchParams.set("response_type", "id_token");
   authUrl.searchParams.set("scope", "openid email profile");
-  authUrl.searchParams.set("nonce", pendingNonce);
+  authUrl.searchParams.set("nonce", nonce);
   authUrl.searchParams.set("prompt", "select_account");
 
   await chrome.tabs.create({ url: authUrl.toString() });
@@ -104,6 +104,7 @@ chrome.runtime.onMessageExternal.addListener(
 
 async function handleOAuthCallback(message, sender) {
   try {
+    const { pendingNonce } = await chrome.storage.session.get("pendingNonce");
     if (!pendingNonce) return { error: "No pending sign-in" };
 
     const res = await fetch(`${API_URL}/auth/google`, {
@@ -111,7 +112,7 @@ async function handleOAuthCallback(message, sender) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ idToken: message.idToken, nonce: pendingNonce }),
     });
-    pendingNonce = null;
+    await chrome.storage.session.remove("pendingNonce");
     if (!res.ok) throw new Error("Authentication failed");
 
     const data = await res.json();
@@ -524,6 +525,13 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true;
   }
 
+  if (message.action === "reconnect_relay") {
+    connectRelay();
+    buildContextMenu();
+    sendResponse({ success: true });
+    return true;
+  }
+
   if (message.action === "rename_profile") {
     serverFetch(`/profiles/${message.profileId}`, {
       method: "PATCH",
@@ -556,7 +564,10 @@ async function getCachedRules() {
     cacheTime = Date.now();
     return cachedRules;
   } catch {
-    return cachedRules || [];
+    // Fail closed — don't serve stale rules after fetch failure
+    cachedRules = null;
+    cacheTime = 0;
+    return [];
   }
 }
 
