@@ -16,6 +16,18 @@ const BROWSER_NAMES = {
   helium: "Helium",
 };
 
+const DEFAULT_ICONS = { 16: "icons/icon16.png", 48: "icons/icon48.png", 128: "icons/icon128.png" };
+const SUCCESS_ICONS = { 16: "icons/icon16-success.png", 48: "icons/icon48-success.png", 128: "icons/icon128-success.png" };
+const ERROR_ICONS = { 16: "icons/icon16-error.png", 48: "icons/icon48-error.png", 128: "icons/icon128-error.png" };
+
+let iconResetTimer = null;
+
+function flashIcon(type) {
+  clearTimeout(iconResetTimer);
+  chrome.action.setIcon({ path: type === "success" ? SUCCESS_ICONS : ERROR_ICONS });
+  iconResetTimer = setTimeout(() => chrome.action.setIcon({ path: DEFAULT_ICONS }), 2000);
+}
+
 // ── Lifecycle ──
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -327,12 +339,15 @@ chrome.contextMenus.onClicked.addListener(async (info) => {
   try {
     if (typeof id === "string" && id.startsWith("paid:")) {
       const targetProfileId = id.slice(5);
-      await routeViaRelay(url, targetProfileId);
+      const result = await routeViaRelay(url, targetProfileId);
+      flashIcon(result?.ok ? "success" : "error");
     } else if (typeof id === "string" && id.startsWith("free:")) {
       const parts = id.split(":");
-      await openInProfileFree(url, parts[1], parts.slice(2).join(":"));
+      const result = await openInProfileFree(url, parts[1], parts.slice(2).join(":"));
+      flashIcon(result?.success ? "success" : "error");
     }
   } catch (err) {
+    flashIcon("error");
     console.error("autopilot: context menu failed", err);
   }
 });
@@ -626,9 +641,13 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
           recentRedirects.set(details.url, Date.now());
           const result = await routeViaRelay(details.url, rule.target_profile_id);
           if (result?.ok) {
+            flashIcon("success");
             await chrome.tabs.remove(details.tabId);
+          } else {
+            flashIcon("error");
           }
         } catch (err) {
+          flashIcon("error");
           console.error("autopilot: paid redirect failed", err);
         }
         return;
@@ -655,8 +674,14 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
             rule.browser,
             rule.profileDirectory
           );
-          if (result.success) await chrome.tabs.remove(details.tabId);
+          if (result.success) {
+            flashIcon("success");
+            await chrome.tabs.remove(details.tabId);
+          } else {
+            flashIcon("error");
+          }
         } catch (err) {
+          flashIcon("error");
           console.error("autopilot: free redirect failed", err);
         }
         return;

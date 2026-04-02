@@ -9,5 +9,9 @@ __pycache__/
 .idea/
 CLAUDE.md
 AGENTS.md
+dev.sh
+build.sh
+packages/extension/icons/*-dev.png
+packages/extension/icons/*-prod.png
 packages/extension/store/autopilot-extension.zip
 packages/extension/store/setup-tip-mockup.png
