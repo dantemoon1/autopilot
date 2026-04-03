@@ -390,6 +390,37 @@ nav {
   margin-bottom: 0;
 }
 
+.prose h3 {
+  font-size: 14px;
+  color: #fafafa;
+  margin-top: 24px;
+  margin-bottom: 8px;
+}
+
+.prose ul {
+  padding-left: 20px;
+  margin-bottom: 12px;
+}
+
+.prose li {
+  font-size: 13px;
+  color: #a1a1aa;
+  line-height: 1.7;
+  margin-bottom: 4px;
+}
+
+.prose code {
+  background: #1c1c21;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 12px;
+}
+
+.prose a {
+  color: #818cf8;
+  text-decoration: none;
+}
+
 /* Footer */
 footer {
   display: flex;

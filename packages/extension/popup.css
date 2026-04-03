@@ -719,6 +719,10 @@ input.edit-profile-input {
   margin-top: 6px;
 }
 
+#status-message.status-error {
+  color: #ef4444;
+}
+
 .footer-row {
   display: flex;
   justify-content: space-between;

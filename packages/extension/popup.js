@@ -362,15 +362,16 @@ setupCopyButton("copy-update-btn", () => document.querySelector("#update-banner 
 
 document.getElementById("sign-in-btn").addEventListener("click", async () => {
   const btn = document.getElementById("sign-in-btn");
+  const originalHTML = btn.innerHTML;
   btn.disabled = true;
   btn.textContent = "Signing in...";
   try {
     await chrome.runtime.sendMessage({ action: "sign_in" });
     init();
   } catch (err) {
-    showStatus("Sign in failed");
+    showStatus("Sign in failed", true);
     btn.disabled = false;
-    btn.textContent = "Sign in with Google";
+    btn.innerHTML = originalHTML;
   }
 });
 
@@ -437,13 +438,13 @@ document.getElementById("new-profile-btn").addEventListener("click", async () =>
 
 document.getElementById("register-btn").addEventListener("click", async () => {
   const name = document.getElementById("profile-name-input").value.trim();
-  if (!name) { showStatus("Enter a name"); return; }
+  if (!name) { showStatus("Enter a name", true); return; }
 
   // Check if this name is already used by another profile
   const existing = await chrome.runtime.sendMessage({ action: "list_profiles" });
   const browser = document.getElementById("profile-browser-select").value;
   if (existing.profiles?.some((p) => p.name === name && p.browser === browser)) {
-    showStatus("That name is already used. Try a unique name like 'Work Chrome' or 'Home Helium'.");
+    showStatus("That name is already used. Try a unique name like 'Work Chrome' or 'Home Helium'.", true);
     return;
   }
 
@@ -483,9 +484,10 @@ newTypeSelect.addEventListener("change", () => {
   keywordFields.hidden = !isKeyword;
 });
 
-function showStatus(msg) {
+function showStatus(msg, isError = false) {
   statusMessage.textContent = msg;
-  setTimeout(() => { statusMessage.textContent = ""; }, 2000);
+  statusMessage.classList.toggle("status-error", isError);
+  setTimeout(() => { statusMessage.textContent = ""; statusMessage.classList.remove("status-error"); }, 4000);
 }
 
 // ── Rules ──
@@ -587,18 +589,18 @@ addRuleBtn.addEventListener("click", async () => {
   const type = newTypeSelect.value;
   const profileValue = newProfileSelect.value;
 
-  if (!profileValue) { showStatus("Select a profile"); return; }
+  if (!profileValue) { showStatus("Select a profile", true); return; }
 
   if (currentMode === "paid") {
     let rule;
     if (type === "domain") {
       let domain = newDomainInput.value.trim();
-      if (!domain) { showStatus("Enter a domain"); return; }
+      if (!domain) { showStatus("Enter a domain", true); return; }
       domain = domain.replace(/^https?:\/\//, "").replace(/\/.*$/, "").toLowerCase();
       rule = { type: "domain", domain, includeSubdomains: newSubdomainsCheckbox.checked, targetProfileId: profileValue };
     } else {
       const keyword = newKeywordInput.value.trim();
-      if (!keyword) { showStatus("Enter a keyword"); return; }
+      if (!keyword) { showStatus("Enter a keyword", true); return; }
       rule = { type: "keyword", keyword: keyword.toLowerCase(), targetProfileId: profileValue };
     }
     const result = await chrome.runtime.sendMessage({ action: "add_rule_paid", rule });
@@ -608,7 +610,7 @@ addRuleBtn.addEventListener("click", async () => {
       return;
     }
     if (result?.error) {
-      showStatus(result.error);
+      showStatus(result.error, true);
       return;
     }
   } else {

@@ -71,7 +71,11 @@
       const params = new URLSearchParams(hash);
       const idToken = params.get("id_token");
 
-      if (idToken && chrome.runtime && chrome.runtime.sendMessage) {
+      if (!idToken) {
+        document.getElementById("icon").classList.add("callback-icon--error");
+        document.getElementById("title").textContent = "Sign-in cancelled";
+        document.getElementById("sub").textContent = "No sign-in token received. Please try again from the extension.";
+      } else if (chrome.runtime && chrome.runtime.sendMessage) {
         chrome.runtime.sendMessage(
           EXTENSION_ID,
           { type: "oauth_callback", idToken: idToken },
