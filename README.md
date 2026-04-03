@@ -58,3 +58,4 @@ Add `--purge` to remove saved rules too.
 ## License
 
 MIT
+
