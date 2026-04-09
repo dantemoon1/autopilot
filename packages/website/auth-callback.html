@@ -65,7 +65,22 @@
     </div>
 
     <script>
-      const EXTENSION_ID = "cojhoeoiabkniahpnhobifbgpicfabpg";
+      const CWS_EXTENSION_ID = "cojhoeoiabkniahpnhobifbgpicfabpg";
+      const DEV_EXTENSION_ID = "eifgnohgbaefkgpgiipagieecnfjkome";
+
+      function sendToken(extensionId, idToken) {
+        return new Promise((resolve) => {
+          chrome.runtime.sendMessage(
+            extensionId,
+            { type: "oauth_callback", idToken: idToken },
+            function(response) {
+              // chrome.runtime.lastError fires if extension not found — that's fine
+              if (chrome.runtime.lastError) { resolve(null); return; }
+              resolve(response);
+            }
+          );
+        });
+      }
 
       const hash = window.location.hash.slice(1);
       const params = new URLSearchParams(hash);
@@ -76,20 +91,25 @@
         document.getElementById("title").textContent = "Sign-in cancelled";
         document.getElementById("sub").textContent = "No sign-in token received. Please try again from the extension.";
       } else if (chrome.runtime && chrome.runtime.sendMessage) {
-        chrome.runtime.sendMessage(
-          EXTENSION_ID,
-          { type: "oauth_callback", idToken: idToken },
-          function(response) {
-            if (response && response.success) {
-              document.getElementById("title").textContent = "Signed in";
-              document.getElementById("sub").textContent = "You can close this tab and reopen the extension.";
-            } else {
-              document.getElementById("icon").classList.add("callback-icon--error");
-              document.getElementById("title").textContent = "Something went wrong";
-              document.getElementById("sub").textContent = response?.error || "Could not connect to the extension. Is autopilot installed?";
-            }
+        // Try production extension first, fall back to dev extension
+        sendToken(CWS_EXTENSION_ID, idToken).then((response) => {
+          if (response && response.success) {
+            document.getElementById("title").textContent = "Signed in";
+            document.getElementById("sub").textContent = "You can close this tab and reopen the extension.";
+            return;
           }
-        );
+          return sendToken(DEV_EXTENSION_ID, idToken);
+        }).then((response) => {
+          if (response === undefined) return; // CWS succeeded, skip
+          if (response && response.success) {
+            document.getElementById("title").textContent = "Signed in";
+            document.getElementById("sub").textContent = "You can close this tab and reopen the extension.";
+          } else {
+            document.getElementById("icon").classList.add("callback-icon--error");
+            document.getElementById("title").textContent = "Something went wrong";
+            document.getElementById("sub").textContent = response?.error || "Could not connect to the extension. Is autopilot installed?";
+          }
+        });
       } else {
         document.getElementById("icon").classList.add("callback-icon--error");
         document.getElementById("title").textContent = "Extension not found";

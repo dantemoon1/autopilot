@@ -59,34 +59,44 @@
     </div>
 
     <script>
-      var EXTENSION_ID = "cojhoeoiabkniahpnhobifbgpicfabpg";
+      var CWS_EXTENSION_ID = "cojhoeoiabkniahpnhobifbgpicfabpg";
+      var DEV_EXTENSION_ID = "eifgnohgbaefkgpgiipagieecnfjkome";
       var attempts = 0;
       var maxAttempts = 30;
+
+      function trySendMessage(extensionId, msg) {
+        return new Promise(function(resolve) {
+          chrome.runtime.sendMessage(extensionId, msg, function(response) {
+            if (chrome.runtime.lastError) { resolve(null); return; }
+            resolve(response);
+          });
+        });
+      }
 
       function notifyExtension() {
         attempts++;
         if (chrome.runtime && chrome.runtime.sendMessage) {
-          chrome.runtime.sendMessage(
-            EXTENSION_ID,
-            { type: "subscription_complete" },
-            function(response) {
-              if (chrome.runtime.lastError || !response) {
-                if (attempts < maxAttempts) {
-                  setTimeout(notifyExtension, 2000);
-                } else {
-                  document.getElementById("sub").textContent = "You can close this tab and reopen the extension.";
-                }
-                return;
-              }
-              if (response.active) {
-                document.getElementById("sub").textContent = "You're all set! You can close this tab and open the extension.";
-              } else if (attempts < maxAttempts) {
+          var msg = { type: "subscription_complete" };
+          trySendMessage(CWS_EXTENSION_ID, msg).then(function(response) {
+            if (response) return response;
+            return trySendMessage(DEV_EXTENSION_ID, msg);
+          }).then(function(response) {
+            if (!response) {
+              if (attempts < maxAttempts) {
                 setTimeout(notifyExtension, 2000);
               } else {
                 document.getElementById("sub").textContent = "You can close this tab and reopen the extension.";
               }
+              return;
             }
-          );
+            if (response.active) {
+              document.getElementById("sub").textContent = "You're all set! You can close this tab and open the extension.";
+            } else if (attempts < maxAttempts) {
+              setTimeout(notifyExtension, 2000);
+            } else {
+              document.getElementById("sub").textContent = "You can close this tab and reopen the extension.";
+            }
+          });
         } else {
           document.getElementById("sub").textContent = "You can close this tab and reopen the extension.";
         }
