@@ -663,12 +663,25 @@ async function init() {
   registerScreen.hidden = true;
   mainUI.hidden = true;
 
+  // "What's new" link — show once per version
+  const currentVersion = chrome.runtime.getManifest().version;
+  const { lastSeenVersion } = await chrome.storage.local.get("lastSeenVersion");
+  const whatsNewLink = document.getElementById("whats-new-link");
+  if (lastSeenVersion !== currentVersion) {
+    whatsNewLink.hidden = false;
+    whatsNewLink.addEventListener("click", () => {
+      chrome.storage.local.set({ lastSeenVersion: currentVersion });
+    });
+  }
+
   const modeInfo = await chrome.runtime.sendMessage({ action: "get_mode" });
   currentMode = modeInfo.mode;
 
   setModeBadge(currentMode);
 
   if (currentMode === "paid") {
+    // Always show sign out when in paid mode
+    document.getElementById("sign-out-link").hidden = false;
 
     // Show billing link for subscribers, hide donate
     const subRes = await chrome.runtime.sendMessage({ action: "check_subscription" });
@@ -794,4 +807,53 @@ async function init() {
   }
 }
 
-init();
+// ── Route activity log ──
+
+function timeAgo(ts) {
+  const diff = Math.floor((Date.now() - ts) / 1000);
+  if (diff < 60) return "just now";
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+}
+
+async function renderRouteLog() {
+  const logContainer = document.getElementById("route-log");
+  const { routeLog = [] } = await chrome.storage.local.get("routeLog");
+  if (routeLog.length === 0) { logContainer.hidden = true; return; }
+
+  logContainer.hidden = false;
+  logContainer.replaceChildren();
+
+  const title = document.createElement("div");
+  title.className = "route-log-title";
+  title.textContent = "recent";
+  logContainer.appendChild(title);
+
+  for (const entry of routeLog) {
+    const row = document.createElement("div");
+    row.className = "route-log-entry";
+
+    const dot = document.createElement("span");
+    dot.className = `route-log-dot route-log-dot--${entry.success ? "ok" : "fail"}`;
+
+    const host = document.createElement("span");
+    host.className = "route-log-host";
+    host.textContent = entry.host;
+
+    const arrow = document.createTextNode(entry.incoming ? " \u2190 " : " \u2192 ");
+
+    const profile = document.createElement("span");
+    profile.className = "route-log-profile";
+    profile.textContent = entry.success ? entry.profile : (entry.error || "failed");
+
+    const time = document.createElement("span");
+    time.className = "route-log-time";
+    time.textContent = timeAgo(entry.time);
+
+    row.append(dot, host, arrow, profile, time);
+    logContainer.appendChild(row);
+  }
+}
+
+init().then(renderRouteLog);

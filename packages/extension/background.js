@@ -24,8 +24,34 @@ let iconResetTimer = null;
 
 function flashIcon(type) {
   clearTimeout(iconResetTimer);
-  chrome.action.setIcon({ path: type === "success" ? SUCCESS_ICONS : ERROR_ICONS });
-  iconResetTimer = setTimeout(() => chrome.action.setIcon({ path: DEFAULT_ICONS }), 2000);
+  const isSuccess = type === "success";
+  chrome.action.setIcon({ path: isSuccess ? SUCCESS_ICONS : ERROR_ICONS });
+  chrome.action.setBadgeText({ text: isSuccess ? "✓" : "!" });
+  chrome.action.setBadgeBackgroundColor({ color: isSuccess ? "#22c55e" : "#ef4444" });
+  iconResetTimer = setTimeout(() => {
+    chrome.action.setIcon({ path: DEFAULT_ICONS });
+    chrome.action.setBadgeText({ text: "" });
+  }, isSuccess ? 2000 : 5000);
+}
+
+// ── Activity log (last 3 route events, shown in popup) ──
+
+const MAX_LOG_ENTRIES = 3;
+
+async function logRouteEvent(url, profileName, success, error, incoming = false) {
+  let host;
+  try { host = new URL(url).hostname; } catch { host = url; }
+  const entry = {
+    host,
+    profile: profileName || "unknown",
+    success,
+    error: error || null,
+    incoming,
+    time: Date.now(),
+  };
+  const { routeLog = [] } = await chrome.storage.local.get("routeLog");
+  routeLog.unshift(entry);
+  await chrome.storage.local.set({ routeLog: routeLog.slice(0, MAX_LOG_ENTRIES) });
 }
 
 // ── Lifecycle ──
@@ -207,14 +233,62 @@ async function disconnectRelay() {
   }
 }
 
+// Serialise reconnect attempts so overlapping navigations don't tear
+// each other's WebSocket connections down (Codex finding #2).
+let reconnectPromise = null;
+
+async function ensureRelayConnected() {
+  if (reconnectPromise) return reconnectPromise;
+  reconnectPromise = (async () => {
+    // Subscribe BEFORE connectRelay so we can't miss a fast ws-connected
+    // (Codex finding #3).
+    const connected = new Promise((resolve) => {
+      let timer;
+      const onMsg = (msg) => {
+        if (msg.source === "offscreen" && msg.type === "ws-connected") {
+          chrome.runtime.onMessage.removeListener(onMsg);
+          clearTimeout(timer);
+          resolve();
+        }
+      };
+      chrome.runtime.onMessage.addListener(onMsg);
+      timer = setTimeout(() => {
+        chrome.runtime.onMessage.removeListener(onMsg);
+        resolve();
+      }, 3000);
+    });
+    await connectRelay();
+    await connected;
+  })();
+  try { await reconnectPromise; } finally { reconnectPromise = null; }
+}
+
 async function routeViaRelay(url, targetProfileId) {
   await ensureOffscreen();
-  return new Promise((resolve) => {
+  let result = await new Promise((resolve) => {
+    const requestId = crypto.randomUUID();
     chrome.runtime.sendMessage(
-      { target: "offscreen", type: "route", url, targetProfileId },
+      { target: "offscreen", type: "route", url, targetProfileId, requestId },
       resolve
     );
   });
+
+  // Offscreen doc may have been recreated without a WebSocket connection
+  // (e.g. service worker slept, Chrome GC'd the offscreen document).
+  // Also catch undefined result — the send can silently fail if the
+  // offscreen listener isn't ready yet (Codex finding #4).
+  if (!result || result.error === "Not connected") {
+    await ensureRelayConnected();
+    result = await new Promise((resolve) => {
+      const requestId = crypto.randomUUID();
+      chrome.runtime.sendMessage(
+        { target: "offscreen", type: "route", url, targetProfileId, requestId },
+        resolve
+      );
+    });
+  }
+
+  return result;
 }
 
 // ── Native host helpers (free mode) ──
@@ -362,6 +436,17 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       chrome.tabs.create({ url: message.url }).then((tab) => {
         chrome.windows.update(tab.windowId, { focused: true });
       });
+      // Log incoming route
+      if (message.fromProfileId) {
+        getCachedProfiles().then((profiles) => {
+          const name = profileNameById(profiles, message.fromProfileId);
+          logRouteEvent(message.url, name, true, null, true);
+        }).catch(() => {
+          logRouteEvent(message.url, "unknown", true, null, true);
+        });
+      } else {
+        logRouteEvent(message.url, "unknown", true, null, true);
+      }
     }
     if (message.type === "ws-error") {
       console.warn("autopilot: WebSocket error:", message.error);
@@ -573,6 +658,28 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
 });
 
+// ── Profiles cache (for log display names) ──
+
+let cachedProfiles = null;
+let profilesCacheTime = 0;
+
+async function getCachedProfiles() {
+  if (cachedProfiles && Date.now() - profilesCacheTime < CACHE_TTL) return cachedProfiles;
+  try {
+    const data = await serverFetch("/profiles");
+    cachedProfiles = data.profiles || [];
+    profilesCacheTime = Date.now();
+    return cachedProfiles;
+  } catch {
+    return cachedProfiles || [];
+  }
+}
+
+function profileNameById(profiles, id) {
+  const p = profiles.find((p) => p.id === id);
+  return p ? p.name : "unknown";
+}
+
 // ── Rules cache (paid mode) ──
 
 let cachedRules = null;
@@ -639,15 +746,20 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
       ) {
         try {
           recentRedirects.set(details.url, Date.now());
+          const profiles = await getCachedProfiles();
+          const targetName = profileNameById(profiles, rule.target_profile_id);
           const result = await routeViaRelay(details.url, rule.target_profile_id);
           if (result?.ok) {
             flashIcon("success");
+            logRouteEvent(details.url, targetName, true);
             await chrome.tabs.remove(details.tabId);
           } else {
             flashIcon("error");
+            logRouteEvent(details.url, targetName, false, result?.error);
           }
         } catch (err) {
           flashIcon("error");
+          logRouteEvent(details.url, "unknown", false, err.message);
           console.error("autopilot: paid redirect failed", err);
         }
         return;
@@ -669,6 +781,7 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
       ) {
         try {
           recentRedirects.set(details.url, Date.now());
+          const targetName = `${BROWSER_NAMES[rule.browser] || rule.browser}`;
           const result = await openInProfileFree(
             details.url,
             rule.browser,
@@ -676,12 +789,15 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
           );
           if (result.success) {
             flashIcon("success");
+            logRouteEvent(details.url, targetName, true);
             await chrome.tabs.remove(details.tabId);
           } else {
             flashIcon("error");
+            logRouteEvent(details.url, targetName, false);
           }
         } catch (err) {
           flashIcon("error");
+          logRouteEvent(details.url, "unknown", false, err.message);
           console.error("autopilot: free redirect failed", err);
         }
         return;
