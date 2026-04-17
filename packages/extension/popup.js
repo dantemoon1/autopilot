@@ -332,6 +332,89 @@ const addRuleForm = document.getElementById("add-rule-form");
 let profiles = [];
 let currentMode = "free";
 
+const POPUP_CACHE_KEY_RULES = "popupCachedRules";
+const POPUP_CACHE_KEY_PROFILES = "popupCachedProfiles";
+
+let _lastRenderedRules = [];
+
+async function readPopupCache() {
+  const data = await chrome.storage.local.get([
+    POPUP_CACHE_KEY_RULES,
+    POPUP_CACHE_KEY_PROFILES,
+  ]);
+  return {
+    rules: data[POPUP_CACHE_KEY_RULES] || null,
+    profiles: data[POPUP_CACHE_KEY_PROFILES] || null,
+  };
+}
+
+async function writePopupCache(next) {
+  const patch = {};
+  if (next.rules !== undefined) patch[POPUP_CACHE_KEY_RULES] = next.rules;
+  if (next.profiles !== undefined) patch[POPUP_CACHE_KEY_PROFILES] = next.profiles;
+  await chrome.storage.local.set(patch);
+}
+
+async function refreshPopupCacheAndRepaint(paidProfileId) {
+  try {
+    const [profilesRes, rulesRes] = await Promise.all([
+      chrome.runtime.sendMessage({ action: "list_profiles" }),
+      loadRules(),
+    ]);
+    if (profilesRes?.error) return;
+
+    const freshProfiles = profilesRes.profiles || [];
+    const freshRules = rulesRes || [];
+    await writePopupCache({ profiles: freshProfiles, rules: freshRules });
+
+    // Only repaint if the popup is still open AND the data actually changed.
+    // (mainUI hidden means we never made it to the rules view — nothing to do.)
+    if (mainUI.hidden) return;
+
+    const profilesChanged = !shallowEqualProfiles(profiles, freshProfiles);
+    const rulesChanged = !shallowEqualRules(_lastRenderedRules, freshRules);
+
+    if (profilesChanged) {
+      profiles = freshProfiles;
+      newProfileSelect.populatePaid(profiles);
+      // If our own profile got renamed on another device, update the label.
+      const myProfile = profiles.find((p) => p.id === paidProfileId);
+      if (myProfile) currentProfileSelect._triggerText.textContent = myProfile.name;
+    }
+    if (profilesChanged || rulesChanged) {
+      renderRules(freshRules);
+    }
+  } catch {
+    // Network blip — keep showing cached data, try again next popup open.
+  }
+}
+
+function shallowEqualProfiles(a, b) {
+  if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i].id !== b[i].id || a[i].name !== b[i].name || a[i].browser !== b[i].browser) return false;
+  }
+  return true;
+}
+
+function shallowEqualRules(a, b) {
+  if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (
+      a[i].id !== b[i].id ||
+      a[i].type !== b[i].type ||
+      a[i].domain !== b[i].domain ||
+      a[i].keyword !== b[i].keyword ||
+      a[i].target_profile_id !== b[i].target_profile_id ||
+      (a[i].include_subdomains ?? a[i].includeSubdomains) !==
+        (b[i].include_subdomains ?? b[i].includeSubdomains)
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
 // Custom dropdowns
 const currentProfileSelect = new ProfileSelect(
   document.getElementById("current-profile-select"),
@@ -512,6 +595,7 @@ function describeRule(rule) {
 }
 
 function renderRules(rules) {
+  _lastRenderedRules = rules;
   rulesList.replaceChildren();
 
   if (rules.length === 0) {
@@ -574,7 +658,9 @@ function renderRules(rules) {
         currentRules.splice(index, 1);
         await saveRules(currentRules);
       }
-      renderRules(await loadRules());
+      const fresh = await loadRules();
+      renderRules(fresh);
+      if (currentMode === "paid") await writePopupCache({ rules: fresh });
       showStatus("Rule removed");
     });
 
@@ -631,7 +717,9 @@ addRuleBtn.addEventListener("click", async () => {
     await saveRules(rules);
   }
 
-  renderRules(await loadRules());
+  const fresh = await loadRules();
+  renderRules(fresh);
+  if (currentMode === "paid") await writePopupCache({ rules: fresh });
   newDomainInput.value = "";
   newKeywordInput.value = "";
   addRuleForm.hidden = true;
@@ -706,24 +794,42 @@ async function init() {
       return;
     }
 
-    // Load profiles and rules from server
-    const [profilesRes, rulesRes] = await Promise.all([
-      chrome.runtime.sendMessage({ action: "list_profiles" }),
-      loadRules(),
-    ]);
+    // Render from cache instantly (if we have it), then refresh in background.
+    // Falls back to a blocking fetch only on first use / after signOut clear.
+    const cache = await readPopupCache();
+    const haveCache = Array.isArray(cache.profiles) && Array.isArray(cache.rules);
 
-    if (profilesRes.error) {
-      setupScreen.hidden = false;
-      return;
+    let profilesRes;
+    let rulesRes;
+
+    if (haveCache) {
+      profilesRes = { profiles: cache.profiles };
+      rulesRes = cache.rules;
+      // Fire-and-forget network refresh; UI will repaint if data changed.
+      refreshPopupCacheAndRepaint(modeInfo.paidProfileId);
+    } else {
+      [profilesRes, rulesRes] = await Promise.all([
+        chrome.runtime.sendMessage({ action: "list_profiles" }),
+        loadRules(),
+      ]);
+
+      if (profilesRes.error) {
+        setupScreen.hidden = false;
+        return;
+      }
+      await writePopupCache({
+        profiles: profilesRes.profiles || [],
+        rules: rulesRes || [],
+      });
     }
 
     profiles = profilesRes.profiles || [];
     mainUI.hidden = false;
 
-    // Show profile name with icon
     const myProfile = profiles.find((p) => p.id === modeInfo.paidProfileId);
     if (!myProfile) {
-      // Stored profile no longer exists — re-pick
+      // If cache was stale, a background refresh may fix this — but in the
+      // common path the stored profile really is gone, so re-pick.
       await chrome.storage.local.remove(["paidProfileId"]);
       modeInfo.paidProfileId = null;
       if (profiles.length > 0) {
@@ -744,7 +850,6 @@ async function init() {
         currentProfileSelect._triggerIcon = icon;
       }
       currentProfileSelect._triggerText.textContent = myProfile.name;
-      // Replace the trigger with a clone to remove the dropdown toggle handler
       const newTrigger = currentProfileSelect.trigger.cloneNode(true);
       currentProfileSelect.trigger.replaceWith(newTrigger);
       currentProfileSelect.trigger = newTrigger;

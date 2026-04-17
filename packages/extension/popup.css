@@ -49,16 +49,15 @@ body {
 
 .whats-new-link {
   font-size: 10px;
-  color: #e4e4e7;
-  text-decoration: underline;
-  text-underline-offset: 2px;
+  color: #818cf8;
+  text-decoration: none;
   transition: color 0.15s;
   margin-left: auto;
   margin-right: 8px;
 }
 
 .whats-new-link:hover {
-  color: #fafafa;
+  color: #a5b4fc;
 }
 
 .title-sign-out {

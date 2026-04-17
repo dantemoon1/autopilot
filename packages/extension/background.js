@@ -66,7 +66,13 @@ chrome.runtime.onStartup.addListener(startup);
 async function startup() {
   buildContextMenu();
   const mode = await getMode();
-  if (mode === "paid") connectRelay();
+  if (mode === "paid") {
+    connectRelay();
+    // Pre-warm rules/profiles so the first navigation after browser launch
+    // doesn't pay the cold-fetch tax. Non-blocking — routing tolerates
+    // it not being ready yet (falls through to await fetch in getCachedRules).
+    prewarmCaches();
+  }
 }
 
 // ── Mode helpers ──
@@ -96,6 +102,7 @@ async function serverFetch(path, options = {}) {
   });
   if (res.status === 401) {
     await chrome.storage.local.remove(["mode", "authToken", "user", "paidProfileId"]);
+    await invalidateAllCaches();
     disconnectRelay();
     throw new Error("Session expired");
   }
@@ -161,6 +168,7 @@ async function handleOAuthCallback(message, sender) {
     });
 
     buildContextMenu();
+    prewarmCaches();
     if (sender.tab?.id) chrome.tabs.remove(sender.tab.id);
     return { success: true };
   } catch (err) {
@@ -188,7 +196,7 @@ async function signOut() {
     "paidProfileId",
   ]);
   await chrome.contextMenus.removeAll();
-  invalidateRulesCache();
+  await invalidateAllCaches();
 }
 
 // ── Offscreen / WebSocket relay (paid mode) ──
@@ -524,6 +532,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     })
       .then(async (profile) => {
         await chrome.storage.local.set({ paidProfileId: profile.id });
+        await invalidateProfilesCache();
+        fetchProfilesFromServer().catch(() => {});
         connectRelay();
         buildContextMenu();
         sendResponse({ success: true, profile });
@@ -609,12 +619,16 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         });
         if (res.status === 401) {
           await chrome.storage.local.remove(["mode", "authToken", "user", "paidProfileId"]);
+          await invalidateAllCaches();
           sendResponse({ error: "Session expired" });
           return;
         }
         const data = await res.json();
         if (res.ok) {
-          invalidateRulesCache();
+          await invalidateRulesCache();
+          // Write-through: new rule immediately available to navigation.
+          // Non-blocking so the popup gets its response fast.
+          fetchRulesFromServer().catch(() => {});
           sendResponse({ success: true, rule: data });
         } else {
           sendResponse({ error: data.error });
@@ -628,7 +642,11 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
   if (message.action === "delete_rule_paid") {
     serverFetch(`/rules/${message.ruleId}`, { method: "DELETE" })
-      .then(() => { invalidateRulesCache(); sendResponse({ success: true }); })
+      .then(async () => {
+        await invalidateRulesCache();
+        fetchRulesFromServer().catch(() => {});
+        sendResponse({ success: true });
+      })
       .catch((err) => sendResponse({ error: err.message }));
     return true;
   }
@@ -645,33 +663,131 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       method: "PATCH",
       body: JSON.stringify({ name: message.name }),
     })
-      .then(() => { buildContextMenu(); sendResponse({ success: true }); })
+      .then(async () => {
+        await invalidateProfilesCache();
+        fetchProfilesFromServer().catch(() => {});
+        buildContextMenu();
+        sendResponse({ success: true });
+      })
       .catch((err) => sendResponse({ error: err.message }));
     return true;
   }
 
   if (message.action === "delete_profile") {
     serverFetch(`/profiles/${message.profileId}`, { method: "DELETE" })
-      .then(() => { buildContextMenu(); sendResponse({ success: true }); })
+      .then(async () => {
+        await invalidateProfilesCache();
+        fetchProfilesFromServer().catch(() => {});
+        buildContextMenu();
+        sendResponse({ success: true });
+      })
       .catch((err) => sendResponse({ error: err.message }));
     return true;
   }
 });
 
-// ── Profiles cache (for log display names) ──
+// ── Persistent caches (survive service worker sleep) ──
+//
+// Problem: MV3 service workers are suspended aggressively (~30s idle).
+// In-memory caches get wiped, forcing a network fetch on every wake.
+// If the server is cold too, navigation listeners time out and routes
+// miss. Backing the cache with chrome.storage.session survives SW sleep
+// within a browser session (cleared on browser restart) and lets us
+// serve stale data instantly while refreshing in the background.
+//
+// Two TTLs:
+//   FRESH_TTL  — under this age, cache is authoritative, no refresh.
+//   STALE_TTL  — under this age, cache is served immediately but a
+//                refresh is kicked off in parallel (stale-while-revalidate).
+//                Over this age, we await a fresh fetch.
 
-let cachedProfiles = null;
-let profilesCacheTime = 0;
+const FRESH_TTL = 30_000;         // 30s
+const STALE_TTL = 5 * 60_000;     // 5 min — beyond this, block on fetch
+
+const CACHE_KEY_RULES = "bgCachedRules";
+const CACHE_KEY_RULES_TIME = "bgCachedRulesTime";
+const CACHE_KEY_PROFILES = "bgCachedProfiles";
+const CACHE_KEY_PROFILES_TIME = "bgCachedProfilesTime";
+
+// Coalesce concurrent fetches — two navigation events arriving in quick
+// succession shouldn't both fire a request.
+let inflightRulesFetch = null;
+let inflightProfilesFetch = null;
+
+async function fetchRulesFromServer() {
+  if (inflightRulesFetch) return inflightRulesFetch;
+  inflightRulesFetch = (async () => {
+    try {
+      const data = await serverFetch("/rules");
+      const rules = data.rules || [];
+      await chrome.storage.session.set({
+        [CACHE_KEY_RULES]: rules,
+        [CACHE_KEY_RULES_TIME]: Date.now(),
+      });
+      return rules;
+    } finally {
+      inflightRulesFetch = null;
+    }
+  })();
+  return inflightRulesFetch;
+}
+
+async function fetchProfilesFromServer() {
+  if (inflightProfilesFetch) return inflightProfilesFetch;
+  inflightProfilesFetch = (async () => {
+    try {
+      const data = await serverFetch("/profiles");
+      const profiles = data.profiles || [];
+      await chrome.storage.session.set({
+        [CACHE_KEY_PROFILES]: profiles,
+        [CACHE_KEY_PROFILES_TIME]: Date.now(),
+      });
+      return profiles;
+    } finally {
+      inflightProfilesFetch = null;
+    }
+  })();
+  return inflightProfilesFetch;
+}
+
+async function getCachedRules() {
+  const { [CACHE_KEY_RULES]: cached, [CACHE_KEY_RULES_TIME]: ts } =
+    await chrome.storage.session.get([CACHE_KEY_RULES, CACHE_KEY_RULES_TIME]);
+  const age = ts ? Date.now() - ts : Infinity;
+
+  if (cached && age < FRESH_TTL) return cached;
+
+  if (cached && age < STALE_TTL) {
+    // Serve stale, revalidate in background. Swallow errors — next call
+    // will retry and eventually hit the await-fetch branch below.
+    fetchRulesFromServer().catch(() => {});
+    return cached;
+  }
+
+  try {
+    return await fetchRulesFromServer();
+  } catch {
+    // No cache and fetch failed: fail closed to avoid routing with nothing.
+    return [];
+  }
+}
 
 async function getCachedProfiles() {
-  if (cachedProfiles && Date.now() - profilesCacheTime < CACHE_TTL) return cachedProfiles;
+  const { [CACHE_KEY_PROFILES]: cached, [CACHE_KEY_PROFILES_TIME]: ts } =
+    await chrome.storage.session.get([CACHE_KEY_PROFILES, CACHE_KEY_PROFILES_TIME]);
+  const age = ts ? Date.now() - ts : Infinity;
+
+  if (cached && age < FRESH_TTL) return cached;
+
+  if (cached && age < STALE_TTL) {
+    fetchProfilesFromServer().catch(() => {});
+    return cached;
+  }
+
   try {
-    const data = await serverFetch("/profiles");
-    cachedProfiles = data.profiles || [];
-    profilesCacheTime = Date.now();
-    return cachedProfiles;
+    return await fetchProfilesFromServer();
   } catch {
-    return cachedProfiles || [];
+    return cached || [];
   }
 }
 
@@ -680,30 +796,36 @@ function profileNameById(profiles, id) {
   return p ? p.name : "unknown";
 }
 
-// ── Rules cache (paid mode) ──
-
-let cachedRules = null;
-let cacheTime = 0;
-const CACHE_TTL = 30_000; // 30 seconds
-
-async function getCachedRules() {
-  if (cachedRules && Date.now() - cacheTime < CACHE_TTL) return cachedRules;
-  try {
-    const data = await serverFetch("/rules");
-    cachedRules = data.rules || [];
-    cacheTime = Date.now();
-    return cachedRules;
-  } catch {
-    // Fail closed — don't serve stale rules after fetch failure
-    cachedRules = null;
-    cacheTime = 0;
-    return [];
-  }
+async function invalidateRulesCache() {
+  await chrome.storage.session.remove([CACHE_KEY_RULES, CACHE_KEY_RULES_TIME]);
 }
 
-function invalidateRulesCache() {
-  cachedRules = null;
-  cacheTime = 0;
+async function invalidateProfilesCache() {
+  await chrome.storage.session.remove([CACHE_KEY_PROFILES, CACHE_KEY_PROFILES_TIME]);
+}
+
+async function invalidateAllCaches() {
+  await chrome.storage.session.remove([
+    CACHE_KEY_RULES,
+    CACHE_KEY_RULES_TIME,
+    CACHE_KEY_PROFILES,
+    CACHE_KEY_PROFILES_TIME,
+  ]);
+  // Popup cache lives in storage.local so it survives browser restart.
+  // Wipe on sign-out so the next user doesn't see the old user's rules.
+  await chrome.storage.local.remove(["popupCachedRules", "popupCachedProfiles"]);
+}
+
+async function prewarmCaches() {
+  const mode = await getMode();
+  if (mode !== "paid") return;
+  const token = await getAuthToken();
+  if (!token) return;
+  // Fire both in parallel; ignore errors (next real request will retry).
+  await Promise.allSettled([
+    fetchRulesFromServer(),
+    fetchProfilesFromServer(),
+  ]);
 }
 
 // ── Navigation interception ──
