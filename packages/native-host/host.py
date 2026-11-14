@@ -15,6 +15,7 @@ import os
 import struct
 import subprocess
 import sys
+import tempfile
 import time
 
 BROWSERS = {
@@ -65,6 +66,8 @@ CONFIG_PATH = os.path.expanduser("~/.local/share/autopilot/config.json")
 # URLs this helper recently sent to another browser — shared across all
 # local-mode installs so a receiving browser doesn't route them back.
 RECENT_PATH = os.path.expanduser("~/.local/share/autopilot/recent.json")
+# Must exceed the extension's honor window (10s in background.js,
+# openInProfileFree) or entries expire on disk before they're checked.
 RECENT_TTL = 60
 
 
@@ -172,6 +175,17 @@ def get_rules():
     return data.get("rules", [])
 
 
+def _write_recent(recent):
+    # Best-effort atomic write — several host processes can race on this
+    # file; a lost entry just means a URL routes back once, which is fine.
+    os.makedirs(os.path.dirname(RECENT_PATH), exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(RECENT_PATH), suffix=".tmp")
+    with os.fdopen(fd, "w") as f:
+        json.dump(recent, f)
+    os.replace(tmp, RECENT_PATH)
+    os.chmod(RECENT_PATH, 0o600)
+
+
 def record_recent(url):
     try:
         recent = {}
@@ -184,32 +198,21 @@ def record_recent(url):
         now = time.time()
         recent = {u: t for u, t in recent.items() if now - t < RECENT_TTL}
         recent[url] = now
-        os.makedirs(os.path.dirname(RECENT_PATH), exist_ok=True)
-        # Atomic write — several host processes can race on this file.
-        tmp = RECENT_PATH + ".tmp"
-        with open(tmp, "w") as f:
-            json.dump(recent, f)
-        os.replace(tmp, RECENT_PATH)
-        os.chmod(RECENT_PATH, 0o600)
+        _write_recent(recent)
     except Exception:
         pass
 
 
 def get_recent():
+    # Read-only — callers already get a pruned map; stale entries on disk
+    # are removed on the next record_recent write.
     if not os.path.exists(RECENT_PATH):
         return {}
     try:
         with open(RECENT_PATH, "r") as f:
             recent = json.load(f)
         now = time.time()
-        recent = {u: t for u, t in recent.items() if now - t < RECENT_TTL}
-        # Rewrite the pruned map so stale URLs don't linger on disk.
-        tmp = RECENT_PATH + ".tmp"
-        with open(tmp, "w") as f:
-            json.dump(recent, f)
-        os.replace(tmp, RECENT_PATH)
-        os.chmod(RECENT_PATH, 0o600)
-        return recent
+        return {u: t for u, t in recent.items() if now - t < RECENT_TTL}
     except Exception:
         return {}
 
