@@ -20,6 +20,10 @@ const DEFAULT_ICONS = { 16: "icons/icon16.png", 48: "icons/icon48.png", 128: "ic
 const SUCCESS_ICONS = { 16: "icons/icon16-success.png", 48: "icons/icon48-success.png", 128: "icons/icon128-success.png" };
 const ERROR_ICONS = { 16: "icons/icon16-error.png", 48: "icons/icon48-error.png", 128: "icons/icon128-error.png" };
 
+// Server close codes — contract documented in AGENTS.md/CLAUDE.md.
+const WS_CLOSE_INVALID_PROFILE = 4002;
+const WS_CLOSE_AUTH_FAILED = 4003;
+
 let iconResetTimer = null;
 
 function flashIcon(type) {
@@ -64,7 +68,7 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.runtime.onStartup.addListener(startup);
 
 async function startup() {
-  buildContextMenu();
+  buildContextMenu().catch(() => {});
   const mode = await getMode();
   if (mode === "paid") {
     connectRelay();
@@ -101,9 +105,7 @@ async function serverFetch(path, options = {}) {
     cache: "no-store",
   });
   if (res.status === 401) {
-    await chrome.storage.local.remove(["mode", "authToken", "user", "paidProfileId"]);
-    await invalidateAllCaches();
-    disconnectRelay();
+    await signOut();
     throw new Error("Session expired");
   }
   if (!res.ok) throw new Error(`Server error: ${res.status}`);
@@ -187,18 +189,6 @@ async function handleSubscriptionCheck(sender) {
   }
 }
 
-async function signOut() {
-  await disconnectRelay();
-  await chrome.storage.local.remove([
-    "mode",
-    "authToken",
-    "user",
-    "paidProfileId",
-  ]);
-  await chrome.contextMenus.removeAll();
-  await invalidateAllCaches();
-}
-
 // ── Offscreen / WebSocket relay (paid mode) ──
 
 async function ensureOffscreen() {
@@ -233,12 +223,23 @@ async function connectRelay() {
   }
 }
 
-async function disconnectRelay() {
-  try {
-    chrome.runtime.sendMessage({ target: "offscreen", type: "disconnect" });
-  } catch {
-    // Offscreen doc might not exist
-  }
+function disconnectRelay() {
+  // Rejects when no offscreen doc exists — expected, ignore it.
+  chrome.runtime
+    .sendMessage({ target: "offscreen", type: "disconnect" })
+    .catch(() => {});
+}
+
+// Single path for dropping the user's session — every caller must end up
+// here so caches and the context menu stay consistent.
+async function signOut() {
+  disconnectRelay();
+  await chrome.storage.local.remove(["mode", "authToken", "user", "paidProfileId"]);
+  await invalidateAllCaches();
+  // Fire-and-forget — signOut can run INSIDE an in-flight build (menu
+  // build → serverFetch → 401 → here), so awaiting the build deadlocks.
+  // The dirty flag already guarantees a follow-up rebuild runs.
+  buildContextMenu().catch(() => {});
 }
 
 // Serialise reconnect attempts so overlapping navigations don't tear
@@ -304,13 +305,26 @@ async function routeViaRelay(url, targetProfileId) {
 function nativeRequest(message) {
   return new Promise((resolve, reject) => {
     const port = chrome.runtime.connectNative(NATIVE_HOST);
+    // A hung native call must never leave this unsettled — it would
+    // wedge routingTabs and the serialized context-menu build forever.
+    const timer = setTimeout(() => {
+      port.disconnect();
+      reject(new Error("Native host timed out"));
+    }, 10_000);
     port.onMessage.addListener((response) => {
+      clearTimeout(timer);
       port.disconnect();
       resolve(response);
     });
     port.onDisconnect.addListener(() => {
+      clearTimeout(timer);
+      // onDisconnect can fire without lastError — still settle.
       const error = chrome.runtime.lastError;
-      if (error) reject(new Error(error.message));
+      reject(
+        error
+          ? new Error(error.message)
+          : new Error("Native host disconnected")
+      );
     });
     port.postMessage(message);
   });
@@ -368,7 +382,28 @@ function urlMatchesRule(url, rule) {
 
 // ── Context menu ──
 
-async function buildContextMenu() {
+// Serialized — concurrent callers (e.g. parallel 401s signing out) share
+// one build instead of interleaving removeAll/create into duplicate ids.
+// A call while a build is in flight marks it dirty and queues one shared
+// rebuild, because the in-flight build may reflect pre-change state.
+let menuBuild = null;
+let menuDirty = false;
+function buildContextMenu() {
+  if (menuBuild) {
+    menuDirty = true;
+    return menuBuild;
+  }
+  menuBuild = _buildContextMenu().finally(() => {
+    menuBuild = null;
+    if (menuDirty) {
+      menuDirty = false;
+      buildContextMenu().catch(() => {});
+    }
+  });
+  return menuBuild;
+}
+
+async function _buildContextMenu() {
   await chrome.contextMenus.removeAll();
   const mode = await getMode();
 
@@ -441,13 +476,17 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.source === "offscreen") {
     if (message.type === "open-url" && message.url &&
         (message.url.startsWith("http://") || message.url.startsWith("https://"))) {
-      lastRelayAt = Date.now();
-      if (recentlyRoutedIn.size > 200) recentlyRoutedIn.clear();
-      recentlyRoutedIn.set(message.url, Date.now());
-      chrome.tabs.create({ url: message.url }).then((tab) => {
-        routedTabs.set(tab.id, message.url);
-        chrome.windows.update(tab.windowId, { focused: true });
-      });
+      chrome.tabs.create({ url: "about:blank" }).then(async (tab) => {
+        if (routedTabs.size > 200) {
+          const cutoff = Date.now() - ROUTED_TAB_EXEMPTION_MS;
+          for (const [id, r] of routedTabs) {
+            if (r.ts < cutoff) routedTabs.delete(id);
+          }
+        }
+        routedTabs.set(tab.id, { url: message.url, ts: Date.now() });
+        await chrome.tabs.update(tab.id, { url: message.url });
+        await chrome.windows.update(tab.windowId, { focused: true });
+      }).catch(() => {});
       // Log incoming route
       if (message.fromProfileId) {
         getCachedProfiles().then((profiles) => {
@@ -465,20 +504,17 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     }
     if (message.type === "ws-closed") {
       // Permanent close from the relay — mirror the HTTP 401 handling.
-      if (message.code === 4003) {
+      if (message.code === WS_CLOSE_AUTH_FAILED) {
         // Token rejected: drop to signed-out state.
-        disconnectRelay();
-        chrome.storage.local
-          .remove(["mode", "authToken", "user", "paidProfileId"])
-          .then(invalidateAllCaches)
-          .then(buildContextMenu)
-          .catch(() => {});
-      } else if (message.code === 4002) {
+        signOut().catch(() => {});
+      } else if (message.code === WS_CLOSE_INVALID_PROFILE) {
         // Profile no longer valid on the server — clear only if it's
         // still the selected one.
         chrome.storage.local.get("paidProfileId").then(({ paidProfileId }) => {
           if (paidProfileId === message.profileId) {
-            chrome.storage.local.remove("paidProfileId").then(buildContextMenu);
+            chrome.storage.local
+              .remove("paidProfileId")
+              .then(() => buildContextMenu().catch(() => {}));
           }
         });
       }
@@ -642,8 +678,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           body: JSON.stringify(message.rule),
         });
         if (res.status === 401) {
-          await chrome.storage.local.remove(["mode", "authToken", "user", "paidProfileId"]);
-          await invalidateAllCaches();
+          await signOut();
           sendResponse({ error: "Session expired" });
           return;
         }
@@ -856,17 +891,52 @@ async function prewarmCaches() {
 
 const recentRedirects = new Map();
 
-// Ping-pong guards. URLs delivered by the relay get an exemption so they
-// can't be routed straight back by opposing rules in the other browser.
-// - recentlyRoutedIn covers the gap before tabs.create resolves
-// - routedTabs keeps a tab exempt while it stays on the routed URL
-//   (reloads, redirects, URL normalization)
-// - lastRelayAt is a short blanket cooldown for everything else
-const recentlyRoutedIn = new Map(); // url -> timestamp
-const routedTabs = new Map();       // tabId -> url
-let lastRelayAt = 0;
+// Tabs opened by the relay get a short routing exemption so opposing
+// rules in two browsers can't ping-pong a URL forever. The tab is
+// created as about:blank and navigated only after its id is recorded,
+// so the exemption always precedes the navigation. The window covers
+// redirect hops and reloads; a user navigation to another URL (see
+// onCommitted below) or the window passing ends it.
+const ROUTED_TAB_EXEMPTION_MS = 10_000;
+const routedTabs = new Map(); // tabId -> { url, ts, committed? }
 
-chrome.tabs.onRemoved.addListener((tabId) => routedTabs.delete(tabId));
+// Tabs mid-route — a relayed page's JS can navigate again during the
+// relay round trip; skip its later navs so it can't double-route.
+const routingTabs = new Set();
+
+// Decide whether a tab's routed-URL exemption ends at commit time.
+// The first real commit is always the routed navigation itself —
+// possibly canonicalized (example.com -> example.com/) or redirected,
+// so track whatever URL it lands on. Later client_redirect hops and
+// reloads keep the exemption too. Anything else means the user
+// navigated away — drop the exemption and evaluate that navigation.
+chrome.webNavigation.onCommitted.addListener(async (details) => {
+  if (details.frameId !== 0) return;
+  if (details.url === "about:blank") return;
+  const routedTab = routedTabs.get(details.tabId);
+  if (!routedTab) return;
+  if (!routedTab.committed) {
+    routedTab.committed = true;
+    routedTab.url = details.url;
+    return;
+  }
+  if (details.url === routedTab.url) return;
+  if ((details.transitionQualifiers || []).includes("client_redirect")) {
+    routedTab.url = details.url;
+    return;
+  }
+  if (details.transitionType === "reload") return;
+  routedTabs.delete(details.tabId);
+  await evaluateNavigation(details);
+});
+
+// A relayed nav that fails (DNS error, etc.) never commits — mark it so
+// the tab's next commit isn't mistaken for the routed navigation.
+chrome.webNavigation.onErrorOccurred.addListener((details) => {
+  if (details.frameId !== 0) return;
+  const routedTab = routedTabs.get(details.tabId);
+  if (routedTab) routedTab.committed = true;
+});
 
 // Clean up stale redirect entries
 function cleanRedirects() {
@@ -880,16 +950,19 @@ function cleanRedirects() {
 chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
   cleanRedirects();
   if (details.frameId !== 0) return;
-  // Ping-pong guards — see notes above.
-  if (Date.now() - lastRelayAt < 1500) return;
-  const tabRoutedUrl = routedTabs.get(details.tabId);
-  if (tabRoutedUrl) {
-    if (details.url === tabRoutedUrl) return; // still on the routed URL
-    routedTabs.delete(details.tabId);         // moved on — rules apply
+  // Relayed tabs are exempt from routing for a short window — see above.
+  const routedTab = routedTabs.get(details.tabId);
+  if (routedTab) {
+    if (Date.now() - routedTab.ts < ROUTED_TAB_EXEMPTION_MS) return;
+    routedTabs.delete(details.tabId);
   }
-  const routedInAt = recentlyRoutedIn.get(details.url);
-  if (routedInAt && Date.now() - routedInAt < 10_000) return;
+  await evaluateNavigation(details);
+});
 
+// Shared routing evaluation — runs on every top-level navigation except
+// while a relay-opened tab is still inside its exemption window.
+async function evaluateNavigation(details) {
+  if (routingTabs.has(details.tabId)) return;
   const lastRedirect = recentRedirects.get(details.url);
   if (lastRedirect && Date.now() - lastRedirect < 3000) return;
 
@@ -911,6 +984,10 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
         urlMatchesRule(details.url, rule) &&
         rule.target_profile_id !== paidProfileId
       ) {
+        // Re-check — the awaits above leave room for a second nav on
+        // this tab to have already claimed the route.
+        if (routingTabs.has(details.tabId)) return;
+        routingTabs.add(details.tabId);
         try {
           recentRedirects.set(details.url, Date.now());
           const profiles = await getCachedProfiles();
@@ -919,7 +996,7 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
           if (result?.ok) {
             flashIcon("success");
             logRouteEvent(details.url, targetName, true);
-            await chrome.tabs.remove(details.tabId);
+            await chrome.tabs.remove(details.tabId).catch(() => {});
           } else {
             flashIcon("error");
             logRouteEvent(details.url, targetName, false, result?.error);
@@ -928,6 +1005,8 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
           flashIcon("error");
           logRouteEvent(details.url, "unknown", false, err.message);
           console.error("autopilot: paid redirect failed", err);
+        } finally {
+          routingTabs.delete(details.tabId);
         }
         return;
       }
@@ -951,6 +1030,8 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
         urlMatchesRule(details.url, rule) &&
         profileKey(rule.browser, rule.profileDirectory) !== currentProfile
       ) {
+        if (routingTabs.has(details.tabId)) return;
+        routingTabs.add(details.tabId);
         try {
           recentRedirects.set(details.url, Date.now());
           const targetName = `${BROWSER_NAMES[rule.browser] || rule.browser}`;
@@ -962,7 +1043,7 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
           if (result.success) {
             flashIcon("success");
             logRouteEvent(details.url, targetName, true);
-            await chrome.tabs.remove(details.tabId);
+            await chrome.tabs.remove(details.tabId).catch(() => {});
           } else {
             flashIcon("error");
             logRouteEvent(details.url, targetName, false);
@@ -971,9 +1052,11 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
           flashIcon("error");
           logRouteEvent(details.url, "unknown", false, err.message);
           console.error("autopilot: free redirect failed", err);
+        } finally {
+          routingTabs.delete(details.tabId);
         }
         return;
       }
     }
   }
-});
+}

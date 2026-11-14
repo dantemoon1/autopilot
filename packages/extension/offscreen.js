@@ -8,6 +8,10 @@ let currentToken = null;
 let currentProfileId = null;
 const pendingRouteCallbacks = new Map();
 
+// Server close codes — contract documented in AGENTS.md/CLAUDE.md.
+const WS_CLOSE_INVALID_PROFILE = 4002;
+const WS_CLOSE_AUTH_FAILED = 4003;
+
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.target !== "offscreen") return false;
 
@@ -120,9 +124,8 @@ function connect() {
   ws.onclose = (event) => {
     ws = null;
     // Permanent failures — don't retry, tell the background so it can
-    // react (4002 = profile invalid/deleted, 4003 = auth failed).
-    // 4001 (auth timeout) and uncoded closes stay retryable.
-    if (event.code === 4002 || event.code === 4003) {
+    // react. 4001 (auth timeout) and uncoded closes stay retryable.
+    if (event.code === WS_CLOSE_INVALID_PROFILE || event.code === WS_CLOSE_AUTH_FAILED) {
       chrome.runtime
         .sendMessage({
           source: "offscreen",
