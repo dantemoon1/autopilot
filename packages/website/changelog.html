@@ -21,6 +21,13 @@
         <h2>Changelog</h2>
         <div class="prose">
 
+          <h3>1.2.2 — November 14, 2026</h3>
+          <ul>
+            <li><strong>Routed tabs behave correctly now</strong> — reloading or staying on a link another browser sent you no longer bounces it back, and clicking a different link right after a routed one routes properly (the 1.2.1 ping-pong fix was too broad)</li>
+            <li><strong>Menu reliability</strong> — the right-click "Open in..." menu can no longer get stuck after sign-in/sign-out hiccups, and won't freeze if the local helper stops responding</li>
+            <li><strong>Server hardening</strong> — the relay recovers cleaner from crashes and reports routing errors faster instead of letting them time out</li>
+          </ul>
+
           <h3>1.2.1 — November 13, 2026</h3>
           <ul>
             <li><strong>Local mode now works for Chrome Web Store installs</strong> — if you installed autopilot from the store, the local helper finally recognizes your browser profiles. If you installed the helper before, re-run the install command to get this fix</li>
