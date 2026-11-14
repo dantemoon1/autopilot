@@ -117,13 +117,27 @@ function connect() {
     }
   };
 
-  ws.onclose = () => {
+  ws.onclose = (event) => {
     ws = null;
+    // Permanent failures — don't retry, tell the background so it can
+    // react (4002 = profile invalid/deleted, 4003 = auth failed).
+    // 4001 (auth timeout) and uncoded closes stay retryable.
+    if (event.code === 4002 || event.code === 4003) {
+      chrome.runtime
+        .sendMessage({
+          source: "offscreen",
+          type: "ws-closed",
+          code: event.code,
+          profileId: currentProfileId,
+        })
+        .catch(() => {});
+      return;
+    }
     reconnectTimer = setTimeout(connect, 5000);
   };
 
   ws.onerror = () => {
-    ws.close();
+    ws?.close();
   };
 }
 

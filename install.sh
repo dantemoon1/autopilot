@@ -4,6 +4,7 @@ set -euo pipefail
 INSTALL_DIR="$HOME/.local/share/autopilot"
 HOST_NAME="com.profile_router.host"
 EXTENSION_ID="eifgnohgbaefkgpgiipagieecnfjkome"
+CWS_EXTENSION_ID="cojhoeoiabkniahpnhobifbgpicfabpg"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 echo "autopilot - installer"
@@ -71,7 +72,8 @@ for entry in "${DETECTED[@]}"; do
   "path": "$INSTALL_DIR/host.py",
   "type": "stdio",
   "allowed_origins": [
-    "chrome-extension://$EXTENSION_ID/"
+    "chrome-extension://$EXTENSION_ID/",
+    "chrome-extension://$CWS_EXTENSION_ID/"
   ]
 }
 EOF

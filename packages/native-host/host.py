@@ -6,7 +6,7 @@ Bridges the browser extension to the OS, allowing it to open URLs
 in a specific browser profile across multiple Chromium browsers.
 """
 
-HOST_VERSION = "1.0.0"
+HOST_VERSION = "1.0.1"
 
 import ctypes
 import ctypes.util
@@ -15,6 +15,7 @@ import os
 import struct
 import subprocess
 import sys
+import time
 
 BROWSERS = {
     "chrome": {
@@ -54,8 +55,17 @@ BROWSERS = {
     },
 }
 
-EXTENSION_ID = "eifgnohgbaefkgpgiipagieecnfjkome"
+# Unpacked/public-repo ID and Chrome Web Store ID — a profile counts as
+# "has extension" if either is present in its preferences.
+EXTENSION_IDS = {
+    "eifgnohgbaefkgpgiipagieecnfjkome",
+    "cojhoeoiabkniahpnhobifbgpicfabpg",
+}
 CONFIG_PATH = os.path.expanduser("~/.local/share/autopilot/config.json")
+# URLs this helper recently sent to another browser — shared across all
+# local-mode installs so a receiving browser doesn't route them back.
+RECENT_PATH = os.path.expanduser("~/.local/share/autopilot/recent.json")
+RECENT_TTL = 60
 
 
 def has_extension(data_dir, profile_directory):
@@ -69,7 +79,7 @@ def has_extension(data_dir, profile_directory):
             with open(prefs_path, "r") as f:
                 data = json.load(f)
             settings = data.get("extensions", {}).get("settings", {})
-            if EXTENSION_ID in settings:
+            if EXTENSION_IDS & settings.keys():
                 return True
         except Exception:
             continue
@@ -162,6 +172,48 @@ def get_rules():
     return data.get("rules", [])
 
 
+def record_recent(url):
+    try:
+        recent = {}
+        if os.path.exists(RECENT_PATH):
+            try:
+                with open(RECENT_PATH, "r") as f:
+                    recent = json.load(f)
+            except Exception:
+                recent = {}  # corrupt/partial file — overwrite it
+        now = time.time()
+        recent = {u: t for u, t in recent.items() if now - t < RECENT_TTL}
+        recent[url] = now
+        os.makedirs(os.path.dirname(RECENT_PATH), exist_ok=True)
+        # Atomic write — several host processes can race on this file.
+        tmp = RECENT_PATH + ".tmp"
+        with open(tmp, "w") as f:
+            json.dump(recent, f)
+        os.replace(tmp, RECENT_PATH)
+        os.chmod(RECENT_PATH, 0o600)
+    except Exception:
+        pass
+
+
+def get_recent():
+    if not os.path.exists(RECENT_PATH):
+        return {}
+    try:
+        with open(RECENT_PATH, "r") as f:
+            recent = json.load(f)
+        now = time.time()
+        recent = {u: t for u, t in recent.items() if now - t < RECENT_TTL}
+        # Rewrite the pruned map so stale URLs don't linger on disk.
+        tmp = RECENT_PATH + ".tmp"
+        with open(tmp, "w") as f:
+            json.dump(recent, f)
+        os.replace(tmp, RECENT_PATH)
+        os.chmod(RECENT_PATH, 0o600)
+        return recent
+    except Exception:
+        return {}
+
+
 def save_rules(rules):
     os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
     with open(CONFIG_PATH, "w") as f:
@@ -199,6 +251,7 @@ def main():
             send_message({"success": False, "error": "Only http/https URLs allowed"})
             return
         try:
+            record_recent(url)
             open_in_profile(url, browser, profile)
             send_message({"success": True})
         except Exception as e:
@@ -215,7 +268,7 @@ def main():
     elif action == "get_rules":
         try:
             rules = get_rules()
-            send_message({"rules": rules})
+            send_message({"rules": rules, "recent": get_recent()})
         except Exception as e:
             send_message({"error": str(e)})
 

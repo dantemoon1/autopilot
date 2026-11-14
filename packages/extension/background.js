@@ -1,7 +1,7 @@
 importScripts("config.js");
 
 const NATIVE_HOST = "com.profile_router.host";
-const EXPECTED_HOST_VERSION = "1.0.0";
+const EXPECTED_HOST_VERSION = "1.0.1";
 const UNINSTALL_URL = "https://autopilotapp.co/uninstall.html";
 // API_URL and WS_URL are loaded from config.js (production: autopilot-relay.fly.dev)
 // For local development, edit config.js to point to localhost:8080
@@ -441,7 +441,11 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.source === "offscreen") {
     if (message.type === "open-url" && message.url &&
         (message.url.startsWith("http://") || message.url.startsWith("https://"))) {
+      lastRelayAt = Date.now();
+      if (recentlyRoutedIn.size > 200) recentlyRoutedIn.clear();
+      recentlyRoutedIn.set(message.url, Date.now());
       chrome.tabs.create({ url: message.url }).then((tab) => {
+        routedTabs.set(tab.id, message.url);
         chrome.windows.update(tab.windowId, { focused: true });
       });
       // Log incoming route
@@ -458,6 +462,26 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     }
     if (message.type === "ws-error") {
       console.warn("autopilot: WebSocket error:", message.error);
+    }
+    if (message.type === "ws-closed") {
+      // Permanent close from the relay — mirror the HTTP 401 handling.
+      if (message.code === 4003) {
+        // Token rejected: drop to signed-out state.
+        disconnectRelay();
+        chrome.storage.local
+          .remove(["mode", "authToken", "user", "paidProfileId"])
+          .then(invalidateAllCaches)
+          .then(buildContextMenu)
+          .catch(() => {});
+      } else if (message.code === 4002) {
+        // Profile no longer valid on the server — clear only if it's
+        // still the selected one.
+        chrome.storage.local.get("paidProfileId").then(({ paidProfileId }) => {
+          if (paidProfileId === message.profileId) {
+            chrome.storage.local.remove("paidProfileId").then(buildContextMenu);
+          }
+        });
+      }
     }
     return false;
   }
@@ -832,6 +856,18 @@ async function prewarmCaches() {
 
 const recentRedirects = new Map();
 
+// Ping-pong guards. URLs delivered by the relay get an exemption so they
+// can't be routed straight back by opposing rules in the other browser.
+// - recentlyRoutedIn covers the gap before tabs.create resolves
+// - routedTabs keeps a tab exempt while it stays on the routed URL
+//   (reloads, redirects, URL normalization)
+// - lastRelayAt is a short blanket cooldown for everything else
+const recentlyRoutedIn = new Map(); // url -> timestamp
+const routedTabs = new Map();       // tabId -> url
+let lastRelayAt = 0;
+
+chrome.tabs.onRemoved.addListener((tabId) => routedTabs.delete(tabId));
+
 // Clean up stale redirect entries
 function cleanRedirects() {
   if (recentRedirects.size > 1000) recentRedirects.clear();
@@ -844,6 +880,15 @@ function cleanRedirects() {
 chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
   cleanRedirects();
   if (details.frameId !== 0) return;
+  // Ping-pong guards — see notes above.
+  if (Date.now() - lastRelayAt < 1500) return;
+  const tabRoutedUrl = routedTabs.get(details.tabId);
+  if (tabRoutedUrl) {
+    if (details.url === tabRoutedUrl) return; // still on the routed URL
+    routedTabs.delete(details.tabId);         // moved on — rules apply
+  }
+  const routedInAt = recentlyRoutedIn.get(details.url);
+  if (routedInAt && Date.now() - routedInAt < 10_000) return;
 
   const lastRedirect = recentRedirects.get(details.url);
   if (lastRedirect && Date.now() - lastRedirect < 3000) return;
@@ -895,6 +940,11 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
     const currentProfile = storageResult.currentProfile || null;
     const rules = rulesResponse.rules || [];
     if (!currentProfile || rules.length === 0) return;
+
+    // The native host records URLs it sent to other browsers — don't
+    // route them back (same ping-pong guard as cloud mode).
+    const routedAt = (rulesResponse.recent || {})[details.url];
+    if (routedAt && Date.now() / 1000 - routedAt < 10) return;
 
     for (const rule of rules) {
       if (

@@ -21,6 +21,14 @@
         <h2>Changelog</h2>
         <div class="prose">
 
+          <h3>1.2.1 — November 13, 2026</h3>
+          <ul>
+            <li><strong>Local mode now works for Chrome Web Store installs</strong> — if you installed autopilot from the store, the local helper finally recognizes your browser profiles. If you installed the helper before, re-run the install command to get this fix</li>
+            <li><strong>No more link ping-pong</strong> — a link sent over from another browser won't be sent back, even if the two browsers have opposing rules (fixed in both cloud and local mode)</li>
+            <li><strong>Stability fixes</strong> — the extension no longer retries a dead connection forever, and the server is much more resilient against bad input</li>
+            <li><strong>Small transparency update</strong> — the server now records when each of your profiles last connected and last routed a link (timestamps only, never URLs). See the updated <a href="privacy.html" style="color: #818cf8">privacy policy</a></li>
+          </ul>
+
           <h3>1.2.0 — April 17, 2026</h3>
           <ul>
             <li><strong>Faster popup</strong> — rules and profiles now appear instantly when you click the extension icon, instead of waiting for a network request</li>
